@@ -307,3 +307,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+**/*.gif
+**/*.png
+**/*.jpeg
