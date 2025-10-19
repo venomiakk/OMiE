@@ -12,7 +12,7 @@ class Model:
         self.income_w1 = income_w1
         self.income_w2 = income_w2
         
-        # Default constraints configuration if not provided
+        # Wartości domyślne
         if constraints_config is None:
             self.constraints_config = [
                 {'coef_w1': self.resources_w1[0], 'coef_w2': self.resources_w2[0], 'bound': 60, 'sense': '<='},
@@ -31,7 +31,7 @@ class Model:
         x2 = LpVariable('w2', lowBound=0)
         model += self.income_w1 * x1 + self.income_w2 * x2 # funkcja celu
         
-        # Add constraints dynamically based on configuration
+        # Dynamiczne dodawanie ograniczeń
         for i, constraint in enumerate(self.constraints_config):
             coef_w1 = constraint['coef_w1']
             coef_w2 = constraint['coef_w2']
@@ -47,7 +47,7 @@ class Model:
         
         model.solve()
         
-        # Detect solution type
+        # Wykrywanie typu rozwiązania
         solution_type = self.detect_solution_type(x1.varValue, x2.varValue, value(model.objective))
         
         return x1.varValue, x2.varValue, value(model.objective), solution_type
@@ -57,24 +57,19 @@ class Model:
         Detect if the optimal solution is a point or a line (infinite solutions).
         Returns: 'point', 'line', or 'unbounded'
         """
-        # Check if we have multiple optimal vertices by testing nearby points
         tolerance = 1e-6
         
-        # Test if objective function is parallel to a constraint
-        # by checking if slightly moving along constraints changes objective
         
-        # Find which constraints are active (binding) at the optimal point
+        # Sprawdzenie, które ograniczenia są aktywne w punkcie optymalnym
         active_constraints = []
         for i, constraint in enumerate(self.constraints_config):
             coef_w1 = constraint['coef_w1']
             coef_w2 = constraint['coef_w2']
             bound = constraint['bound']
             sense = constraint['sense']
-            
-            # Calculate constraint value at optimal point
+
             constraint_value = coef_w1 * x1 + coef_w2 * x2
-            
-            # Check if constraint is active (within tolerance)
+  
             if sense == '<=' and abs(constraint_value - bound) < tolerance:
                 active_constraints.append(constraint)
             elif sense == '>=' and abs(constraint_value - bound) < tolerance:
@@ -82,21 +77,19 @@ class Model:
             elif sense == '==' and abs(constraint_value - bound) < tolerance:
                 active_constraints.append(constraint)
         
-        # Check if objective function is parallel to ANY active constraint
-        # This works for both: 2+ active constraints OR 1 active constraint
+        # Sprawdzenie, czy wektor funkcji celu jest równoległy do wektora któregokolwiek z aktywnych ograniczeń
         if len(active_constraints) >= 1:
             obj_coef = [self.income_w1, self.income_w2]
             
             for constraint in active_constraints:
                 const_coef = [constraint['coef_w1'], constraint['coef_w2']]
                 
-                # Check if vectors are parallel (cross product = 0)
+                # Sprawdzenie równoległości przez wyznaczenie iloczynu wektorowego
                 cross_product = obj_coef[0] * const_coef[1] - obj_coef[1] * const_coef[0]
                 
                 if abs(cross_product) < tolerance:
                     return 'line'
         
-        # Check for unbounded solution
         if x1 is None or x2 is None or obj_value is None:
             return 'unbounded'
         
@@ -109,7 +102,6 @@ class Model:
         fig = Figure(figsize=(6, 4.5))
         ax = fig.add_subplot(111)
         
-        # Plot each constraint dynamically
         constraint_data = []
         for i, constraint in enumerate(self.constraints_config):
             coef_w1 = constraint['coef_w1']
@@ -117,7 +109,6 @@ class Model:
             bound = constraint['bound']
             sense = constraint['sense']
             
-            # Calculate y values for the constraint line
             if coef_w2 != 0:
                 y = (bound - coef_w1 * x) / coef_w2
             else:
@@ -127,35 +118,34 @@ class Model:
             label = f"K{i+1}: {coef_w1}*x+{coef_w2}*y{sense}{bound}"
             ax.plot(x, y, label=label)
         
-        # Fill feasible region - handle both <= and >= constraints
-        # Start with the full upper area
-        y_upper = np.full_like(x, 1000)  # Very large number
-        y_lower = np.full_like(x, 0)      # Start from 0
+        # Obszar rozwiązań dopuszczalnych
+        # Zaczynamy od całego obszaru
+        y_upper = np.full_like(x, 1000)
+        y_lower = np.full_like(x, 0)
         
         for data in constraint_data:
             if data['sense'] == '<=':
-                # For <=: feasible region is BELOW the line
+                # Dla <=: obszar rozwiązań jest PONIŻEJ linii
                 y_upper = np.minimum(y_upper, data['y'])
             elif data['sense'] == '>=':
-                # For >=: feasible region is ABOVE the line
+                # Dla >=: obszar rozwiązań jest POWYŻEJ linii
                 y_lower = np.maximum(y_lower, data['y'])
-        
-        # The feasible region is where y_lower <= y <= y_upper
-        # Only plot where this is valid
+
+        # Obszar rozwiązań dopuszczalnych to miejsca, gdzie y_lower <= y <= y_upper
+        # Rysujemy tylko tam, gdzie to jest ważne
         y_fill_lower = np.maximum(y_lower, 0)
-        y_fill_upper = np.minimum(y_upper, 100)  # Cap at reasonable value
+        y_fill_upper = np.minimum(y_upper, 100)
         
-        # Only fill where lower <= upper (valid region)
+        # Wypelnianie obszaru rozwiązań dopuszczalnych
         valid = y_fill_lower <= y_fill_upper
         if np.any(valid):
             ax.fill_between(x, y_fill_lower, y_fill_upper, where=valid, 
                            alpha=0.3, color='lightgreen', label='Obszar rozwiązań')
         
-        # Mark optimal solution differently based on type
+        # Zaznaczenie rozwiązania optymalnego
         if solution_type == 'line':
-            # Find the optimal edge and draw it in red
+            # ZRozwiązanie na linii
             ax.scatter(x1var, x2var, color='red', s=100, zorder=5, marker='o', label="Rozwiązanie (prosta)")
-            # Add text annotation
             ax.text(x1var, x2var + 0.5, 'Nieskończenie wiele\nrozwiązań optymalnych', 
                    ha='center', fontsize=9, bbox=dict(boxstyle='round', facecolor='yellow', alpha=0.7))
         elif solution_type == 'unbounded':
@@ -169,7 +159,6 @@ class Model:
         ax.set_xlabel('X1 (W1)')
         ax.set_ylabel('X2 (W2)')
         
-        # Update title based on solution type
         if solution_type == 'line':
             title = f"Rozwiązanie: W1 = {x1var:.2f}, W2 = {x2var:.2f}, Wartość = {value:.2f}\n(Nieskończenie wiele rozwiązań optymalnych)"
         elif solution_type == 'unbounded':
@@ -187,7 +176,6 @@ class Model:
     def animated_plot(self, x1var, x2var, value, solution_type='point'):
         x = np.linspace(0, 60, 200)
         
-        # Build constraints list dynamically
         constraints = []
         constraint_data = []
         for i, constraint in enumerate(self.constraints_config):
@@ -196,7 +184,6 @@ class Model:
             bound = constraint['bound']
             sense = constraint['sense']
             
-            # Calculate y values for the constraint line
             if coef_w2 != 0:
                 y = (bound - coef_w1 * x) / coef_w2
             else:
@@ -206,7 +193,7 @@ class Model:
             label = f"K{i+1}: {coef_w1}*x+{coef_w2}*y{sense}{bound}"
             constraints.append((x, y, label))
 
-        fig = Figure(figsize=(5.5, 4))  # Smaller for better fit in GUI
+        fig = Figure(figsize=(5.5, 4))  
         ax = fig.add_subplot(111)
         ax.set_xlim(0, 60)
         ax.set_ylim(0, 12)
@@ -234,15 +221,14 @@ class Model:
             ax.grid(True, alpha=0.3)
             legend_labels = []
             
-            # Draw constraints up to current frame
+            # Rysowanie ograniczeń do bieżącej klatki
             for i in range(frame+1):
                 if i < len(constraints):
                     l, = ax.plot(constraints[i][0], constraints[i][1], label=constraints[i][2])
                     legend_labels.append(constraints[i][2])
             
-            # Fill feasible region after all constraints
+            # Wypełnianie obszaru rozwiązań dopuszczalnych po narysowaniu wszystkich ograniczeń
             if frame >= len(constraints):
-                # Handle both <= and >= constraints
                 y_upper = np.full_like(x, 1000)
                 y_lower = np.full_like(x, 0)
                 
@@ -261,7 +247,6 @@ class Model:
                                    alpha=0.3, color='lightgreen')
                     legend_labels.append('Obszar rozwiązań')
             
-            # Show optimum after all constraints
             if frame > len(constraints):
                 if solution_type == 'line':
                     ax.scatter(x1var, x2var, color='red', s=100, zorder=5, marker='o', label="Rozwiązanie (prosta)")
@@ -283,8 +268,7 @@ if __name__ == '__main__':
     data = [[1.0, 1.0, 4.0], [6.0, 2.0, 1.0]]
     income_w1 = 20.0
     income_w2 = 10.0
-    
-    # Example with custom constraints configuration
+
     constraints_config = [
         {'coef_w1': 1.0, 'coef_w2': 6.0, 'bound': 60, 'sense': '<='},
         {'coef_w1': 1.0, 'coef_w2': 2.0, 'bound': 24, 'sense': '<='},
