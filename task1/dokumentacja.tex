@@ -1,0 +1,739 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[polish]{babel}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{geometry}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{float}
+\usepackage{enumitem}
+
+\geometry{margin=2.5cm}
+
+\title{\textbf{Optymalizacja produkcji wyrobów szklanych} \\ 
+\large Programowanie liniowe - Zadanie 1, Ćwiczenie 3}
+\author{Dokumentacja projektu}
+\date{\today}
+
+\lstset{
+    language=Python,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue},
+    commentstyle=\color{gray},
+    stringstyle=\color{orange},
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    frame=single,
+    breaklines=true,
+    captionpos=b
+}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+%=============================================================================
+\section{Treść zadania}
+%=============================================================================
+
+\subsection{Opis problemu}
+
+Proces obróbki 2 gatunków wyrobów szklanych w przedsiębiorstwie \textbf{Szkiełko} wymaga użycia 3 rodzajów krążków ściernych. Przy czym:
+
+\begin{itemize}
+    \item Czas użycia krążka ściernego $K_1$ może wynosić od 0 nawet do \textbf{60 godzin}
+    \item Krążka $K_2$ jest ograniczony do \textbf{24 godzin}
+    \item Czas przydatności krążka $K_3$ do polerowania jest \textbf{nie krótszy niż 8 godzin}
+\end{itemize}
+
+\subsection{Dane wejściowe}
+
+Zużycie czasu pracy krążków na każdy gatunek wyrobu szklanego zawiera poniższa tabela:
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|c|c|c|c|}
+\hline
+\textbf{Wyrób szklany} & $K_1$ & $K_2$ & $K_3$ \\ \hline
+$W_1$ & 1 & 1 & 4 \\ \hline
+$W_2$ & 6 & 2 & 1 \\ \hline
+\end{tabular}
+\caption{Macierz współczynników zużycia czasu krążków [godziny]}
+\end{table}
+
+\textbf{Funkcja celu:}
+\begin{itemize}
+    \item Zysk z obróbki wyrobu $W_1$ wynosi \textbf{20 zł}
+    \item Zysk z obróbki wyrobu $W_2$ wynosi \textbf{10 zł}
+\end{itemize}
+
+\subsection{Cel}
+
+Zaplanować strukturę obróbki tak, aby \textbf{zysk był jak największy}.
+
+%=============================================================================
+\section{Rozwiązanie matematyczne}
+%=============================================================================
+
+\subsection{Formalizacja problemu}
+
+Niech:
+\begin{itemize}
+    \item $x_1$ - liczba wyprodukowanych jednostek wyrobu $W_1$
+    \item $x_2$ - liczba wyprodukowanych jednostek wyrobu $W_2$
+\end{itemize}
+
+\subsection{Model matematyczny}
+
+\textbf{Funkcja celu (maksymalizacja zysku):}
+\begin{equation}
+Z = 20x_1 + 10x_2 \rightarrow \max
+\end{equation}
+
+\textbf{Ograniczenia:}
+\begin{align}
+1 \cdot x_1 + 6 \cdot x_2 &\leq 60 \quad \text{(ograniczenie czasu dla krążka } K_1\text{)} \\
+1 \cdot x_1 + 2 \cdot x_2 &\leq 24 \quad \text{(ograniczenie czasu dla krążka } K_2\text{)} \\
+4 \cdot x_1 + 1 \cdot x_2 &\geq 8 \quad \text{(minimalny czas dla krążka } K_3\text{)} \\
+x_1, x_2 &\geq 0 \quad \text{(warunki nieujemności)}
+\end{align}
+
+\subsection{Rozwiązanie}
+
+Po zastosowaniu metody simpleks (zaimplementowanej w bibliotece PuLP) otrzymujemy następujące rozwiązanie optymalne:
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|l|c|}
+\hline
+\textbf{Zmienna} & \textbf{Wartość optymalna} \\ \hline
+$x_1$ (Wyrób $W_1$) & 0.0 \\ \hline
+$x_2$ (Wyrób $W_2$) & 10.0 \\ \hline
+\textbf{Maksymalny zysk} & \textbf{100.0 zł} \\ \hline
+\end{tabular}
+\caption{Rozwiązanie optymalne zadania}
+\end{table}
+
+\subsection{Weryfikacja ograniczeń}
+
+Sprawdźmy czy rozwiązanie spełnia wszystkie ograniczenia:
+
+\begin{align*}
+K_1: \quad 1 \cdot 0 + 6 \cdot 10 &= 60 \leq 60 \quad \checkmark \\
+K_2: \quad 1 \cdot 0 + 2 \cdot 10 &= 20 \leq 24 \quad \checkmark \\
+K_3: \quad 4 \cdot 0 + 1 \cdot 10 &= 10 \geq 8 \quad \checkmark
+\end{align*}
+
+Wszystkie ograniczenia są spełnione.
+
+%=============================================================================
+\section{Interpretacja uzyskanych wyników}
+%=============================================================================
+
+\subsection{Analiza rozwiązania}
+
+\begin{enumerate}
+    \item \textbf{Struktura produkcji:}
+    \begin{itemize}
+        \item Należy wyprodukować \textbf{0 jednostek} wyrobu $W_1$
+        \item Należy wyprodukować \textbf{10 jednostek} wyrobu $W_2$
+    \end{itemize}
+    
+    \item \textbf{Maksymalny osiągalny zysk:} \textbf{100 zł}
+    
+    \item \textbf{Wykorzystanie zasobów:}
+    \begin{itemize}
+        \item Krążek $K_1$: $60/60$ godzin - \textbf{100\% wykorzystania} (ograniczenie aktywne)
+        \item Krążek $K_2$: $20/24$ godzin - \textbf{83\% wykorzystania} (niewykorzystane 4 godziny)
+        \item Krążek $K_3$: $10/8$ godzin - \textbf{125\%} (przekroczenie minimalnego wymogu o 2 godziny)
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Wnioski ekonomiczne}
+
+\begin{itemize}
+    \item Pomimo że wyrób $W_1$ ma wyższy jednostkowy zysk (20 zł) niż $W_2$ (10 zł), optymalnie jest produkować tylko $W_2$
+    \item Przyczyną jest efektywniejsze wykorzystanie ograniczonego czasu krążka $K_1$ przez wyrób $W_2$
+    \item Wyrób $W_1$ wymaga 4 godziny krążka $K_3$ na jednostkę, podczas gdy $W_2$ tylko 1 godzinę, co pozwala na większą produkcję przy ograniczeniach
+    \item Ograniczeniem wąskiego gardła (ang. \textit{bottleneck}) jest krążek $K_1$ z 60 godzinami dostępności
+\end{itemize}
+
+%=============================================================================
+\section{Cel i zakres działania programu}
+%=============================================================================
+
+\subsection{Przeznaczenie programu}
+
+Program \textbf{Optymalizator Produkcji} został zaprojektowany do rozwiązywania zadań programowania liniowego z \textbf{dowolną liczbą ograniczeń} w kontekście optymalizacji produkcji dwóch produktów.
+
+\subsection{Możliwości programu}
+
+\begin{enumerate}[label=\textbf{\arabic*.}]
+    \item \textbf{Konfiguracja liczby ograniczeń:}
+    \begin{itemize}
+        \item Użytkownik może ustawić od 1 do 10 ograniczeń
+        \item Dynamiczne dostosowanie interfejsu do wybranej liczby
+    \end{itemize}
+    
+    \item \textbf{Definiowanie współczynników:}
+    \begin{itemize}
+        \item Możliwość ustawienia dowolnych współczynników dla każdego produktu ($W_1$, $W_2$)
+        \item Intuicyjna tabela do wprowadzania danych
+    \end{itemize}
+    
+    \item \textbf{Konfiguracja ograniczeń:}
+    \begin{itemize}
+        \item Wybór typu ograniczenia: $\leq$, $\geq$, lub $=$
+        \item Ustawienie wartości granicznej dla każdego ograniczenia
+    \end{itemize}
+    
+    \item \textbf{Optymalizacja:}
+    \begin{itemize}
+        \item Automatyczne rozwiązywanie problemu metodą simpleks
+        \item Wyznaczanie optymalnych wartości produkcji
+        \item Obliczanie maksymalnego zysku
+    \end{itemize}
+    
+    \item \textbf{Wizualizacja:}
+    \begin{itemize}
+        \item Graficzna prezentacja obszaru dopuszczalnego rozwiązań
+        \item Wizualizacja wszystkich ograniczeń
+        \item Oznaczenie punktu optymalnego
+        \item Wybór typu wizualizacji (statyczna, animowana, lub oba)
+        \item Animowana prezentacja budowy wykresu krok po kroku (format GIF)
+        \item Automatyczne dostosowanie rozmiaru wykresów
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Zastosowania}
+
+Program może być wykorzystany do:
+\begin{itemize}
+    \item Planowania produkcji w małych i średnich przedsiębiorstwach
+    \item Optymalizacji wykorzystania zasobów (maszyn, surowców, czasu pracy)
+    \item Dydaktyki - nauczania programowania liniowego
+    \item Analizy scenariuszy "co jeśli" poprzez zmianę parametrów
+\end{itemize}
+
+%=============================================================================
+\section{Instrukcja użytkownika (Dokumentacja zewnętrzna)}
+%=============================================================================
+
+\subsection{Wymagania systemowe}
+
+\begin{itemize}
+    \item System operacyjny: Windows, Linux lub macOS
+    \item Python 3.8 lub nowszy
+    \item Zainstalowane biblioteki (patrz: \texttt{requirements.txt}):
+    \begin{itemize}
+        \item matplotlib
+        \item numpy
+        \item pulp
+        \item PyQt5
+        \item pillow
+    \end{itemize}
+\end{itemize}
+
+\subsection{Instalacja}
+
+\begin{enumerate}
+    \item Pobierz pliki programu do wybranego katalogu
+    \item Otwórz terminal/wiersz poleceń w katalogu programu
+    \item Zainstaluj wymagane biblioteki:
+    \begin{lstlisting}[language=bash]
+pip install -r requirements.txt
+    \end{lstlisting}
+\end{enumerate}
+
+\subsection{Uruchomienie programu}
+
+W terminalu wykonaj polecenie:
+\begin{lstlisting}[language=bash]
+python gui.py
+\end{lstlisting}
+
+\subsection{Obsługa programu - Krok po kroku}
+
+\subsubsection{Krok 1: Wybór liczby ograniczeń}
+
+\begin{enumerate}
+    \item W sekcji \textbf{"1. Wybierz liczbę ograniczeń"} znajdź pole \textit{Liczba ograniczeń}
+    \item Ustaw odpowiednią wartość (1-10) za pomocą przycisków +/- lub wpisując liczbę
+    \item Tabela współczynników oraz pola ograniczeń dostosują się automatycznie
+\end{enumerate}
+
+\subsubsection{Krok 2: Ustawienie współczynników}
+
+\begin{enumerate}
+    \item W sekcji \textbf{"2. Ustaw współczynniki dla produktów"}
+    \item W tabeli:
+    \begin{itemize}
+        \item Wiersze reprezentują produkty ($W_1$, $W_2$)
+        \item Kolumny reprezentują krążki/zasoby ($K_1$, $K_2$, ...)
+    \end{itemize}
+    \item Kliknij na komórkę i wpisz odpowiednią wartość współczynnika
+    \item Przykład: dla zadania domyślnego:
+    \begin{itemize}
+        \item $W_1$: [1, 1, 4]
+        \item $W_2$: [6, 2, 1]
+    \end{itemize}
+\end{enumerate}
+
+\subsubsection{Krok 3: Konfiguracja ograniczeń}
+
+\begin{enumerate}
+    \item W sekcji \textbf{"3. Skonfiguruj ograniczenia"}
+    \item Dla każdego ograniczenia ($K_1$, $K_2$, ...):
+    \begin{itemize}
+        \item Wybierz \textbf{operator} z listy rozwijanej: $\leq$, $\geq$, lub $=$
+        \item Wpisz \textbf{wartość graniczną} w pole tekstowe
+    \end{itemize}
+    \item Przykład dla zadania:
+    \begin{itemize}
+        \item $K_1$: $\leq$ 60
+        \item $K_2$: $\leq$ 24
+        \item $K_3$: $\geq$ 8
+    \end{itemize}
+\end{enumerate}
+
+\subsubsection{Krok 4: Ustawienie zysków}
+
+\begin{enumerate}
+    \item W sekcji \textbf{"4. Ustaw zyski dla produktów"}
+    \item Wpisz zysk jednostkowy dla:
+    \begin{itemize}
+        \item \textit{Zysk dla W1:} (domyślnie: 20)
+        \item \textit{Zysk dla W2:} (domyślnie: 10)
+    \end{itemize}
+\end{enumerate}
+
+\subsubsection{Krok 5: Wybór typu wizualizacji}
+
+\begin{enumerate}
+    \item W sekcji \textbf{"5. Wybierz typ wizualizacji"}
+    \item Z listy rozwijanej \textit{Rodzaj wykresu} wybierz:
+    \begin{itemize}
+        \item \textbf{Oba (statyczny + animacja)} - wyświetla oba wykresy obok siebie
+        \item \textbf{Tylko statyczny} - wyświetla tylko wykres statyczny (większy)
+        \item \textbf{Tylko animacja} - wyświetla tylko animowany GIF (większy)
+    \end{itemize}
+\end{enumerate}
+
+\subsubsection{Krok 6: Obliczenie rozwiązania}
+
+\begin{enumerate}
+    \item Kliknij przycisk \textbf{"Oblicz"}
+    \item Program automatycznie:
+    \begin{itemize}
+        \item Rozwiąże problem optymalizacji
+        \item Wygeneruje wykres(y) zgodnie z wybranym typem wizualizacji
+    \end{itemize}
+    \item W sekcji \textbf{"Wykresy"} zobaczysz:
+    \begin{itemize}
+        \item Jeśli wybrano "Oba": wykres statyczny (po lewej) i animacja (po prawej)
+        \item Jeśli wybrano "Tylko statyczny": jeden duży wykres statyczny
+        \item Jeśli wybrano "Tylko animacja": jedna duża animacja GIF
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Interpretacja wyników}
+
+\begin{itemize}
+    \item \textbf{Tytuł wykresu} pokazuje:
+    \begin{itemize}
+        \item Wartość $W_1$ (oś X)
+        \item Wartość $W_2$ (oś Y)
+        \item Maksymalny zysk
+    \end{itemize}
+    \item \textbf{Czerwona kropka} oznacza punkt optymalny
+    \item \textbf{Zielony obszar} to obszar dopuszczalnych rozwiązań
+    \item \textbf{Linie} reprezentują poszczególne ograniczenia
+\end{itemize}
+
+\subsection{Przykłady użycia}
+
+\subsubsection{Przykład 1: Zadanie domyślne (Szkiełko)}
+
+Użyj wartości domyślnych i kliknij "Oblicz". Otrzymasz rozwiązanie: $W_1=0$, $W_2=10$, Zysk=100 zł.
+
+\subsubsection{Przykład 2: Zmiana liczby ograniczeń}
+
+\begin{enumerate}
+    \item Ustaw liczbę ograniczeń na 2
+    \item Zmień współczynniki i wartości graniczne
+    \item Kliknij "Oblicz" aby zobaczyć nowe rozwiązanie
+\end{enumerate}
+
+%=============================================================================
+\section{Dokumentacja wewnętrzna programu}
+%=============================================================================
+
+\subsection{Architektura systemu}
+
+Program składa się z dwóch głównych modułów:
+
+\begin{enumerate}
+    \item \textbf{model.py} - logika biznesowa i obliczenia
+    \item \textbf{gui.py} - interfejs graficzny użytkownika
+\end{enumerate}
+
+\begin{figure}[H]
+\centering
+\begin{verbatim}
+┌─────────────────────────────────────────────┐
+│              GUI (gui.py)                   │
+│  - Obsługa interfejsu użytkownika           │
+│  - Wprowadzanie danych                      │
+│  - Wyświetlanie wyników                     │
+└──────────────────┬──────────────────────────┘
+                   │
+                   │ tworzy instancję
+                   │ przekazuje parametry
+                   ▼
+┌─────────────────────────────────────────────┐
+│           Model (model.py)                  │
+│  - Rozwiązywanie problemu (PuLP)            │
+│  - Generowanie wykresów (matplotlib)        │
+│  - Tworzenie animacji                       │
+└─────────────────────────────────────────────┘
+\end{verbatim}
+\caption{Architektura systemu}
+\end{figure}
+
+\subsection{Moduł: model.py}
+
+\subsubsection{Klasa Model}
+
+\textbf{Inicjalizacja \_\_init\_\_(data, income\_w1, income\_w2, constraints\_config)}
+
+\begin{lstlisting}[language=Python]
+def __init__(self, data, income_w1, income_w2, 
+             constraints_config=None):
+\end{lstlisting}
+
+\textbf{Parametry:}
+\begin{itemize}
+    \item \texttt{data}: Lista dwóch list - współczynniki dla $W_1$ i $W_2$
+    \item \texttt{income\_w1}: Zysk jednostkowy dla produktu $W_1$
+    \item \texttt{income\_w2}: Zysk jednostkowy dla produktu $W_2$
+    \item \texttt{constraints\_config}: Lista słowników z konfiguracją ograniczeń
+\end{itemize}
+
+\textbf{Struktura constraints\_config:}
+\begin{lstlisting}[language=Python]
+[
+    {
+        'coef_w1': float,  # Współczynnik dla W1
+        'coef_w2': float,  # Współczynnik dla W2
+        'bound': float,    # Wartość graniczna
+        'sense': str       # Typ: '<=', '>=', '=='
+    },
+    ...
+]
+\end{lstlisting}
+
+\subsubsection{Metoda solve()}
+
+Rozwiązuje problem programowania liniowego przy użyciu biblioteki PuLP.
+
+\textbf{Algorytm:}
+\begin{enumerate}
+    \item Tworzenie problemu optymalizacyjnego (maksymalizacja)
+    \item Definiowanie zmiennych decyzyjnych ($x_1$, $x_2$) z warunkiem nieujemności
+    \item Dodanie funkcji celu: $Z = income\_w1 \cdot x_1 + income\_w2 \cdot x_2$
+    \item Dynamiczne dodawanie ograniczeń na podstawie konfiguracji:
+    \begin{itemize}
+        \item Dla każdego ograniczenia w \texttt{constraints\_config}
+        \item Budowa wyrażenia: $coef\_w1 \cdot x_1 + coef\_w2 \cdot x_2$
+        \item Zastosowanie operatora ($\leq$, $\geq$, $=$) i wartości granicznej
+    \end{itemize}
+    \item Rozwiązanie problemu metodą simpleks (wbudowane w PuLP)
+    \item Zwrócenie: $(x_1.value, x_2.value, objective.value)$
+\end{enumerate}
+
+\textbf{Zastosowany algorytm optymalizacji:}
+
+Program wykorzystuje \textbf{metodę simpleks}, która jest standardowym algorytmem rozwiązywania zadań programowania liniowego. Algorytm ten:
+\begin{itemize}
+    \item Przeszukuje wierzchołki wielościanu ograniczeń
+    \item Porusza się wzdłuż krawędzi w kierunku poprawy funkcji celu
+    \item Zatrzymuje się w punkcie optymalnym (jeśli istnieje)
+    \item Złożoność: wielomianowa w praktyce, wykładnicza w najgorszym przypadku
+\end{itemize}
+
+\subsubsection{Metoda full\_plot()}
+
+Generuje statyczny wykres 2D z rozwiązaniem.
+
+\textbf{Algorytm wizualizacji:}
+\begin{enumerate}
+    \item Tworzenie siatki punktów $x \in [0, 60]$
+    \item Dla każdego ograniczenia:
+    \begin{itemize}
+        \item Obliczenie $y = \frac{bound - coef\_w1 \cdot x}{coef\_w2}$
+        \item Rysowanie linii ograniczenia
+    \end{itemize}
+    \item Wyznaczenie obszaru dopuszczalnego (zielony obszar):
+    \begin{itemize}
+        \item Przecięcie wszystkich półpłaszczyzn określonych przez ograniczenia
+        \item Użycie funkcji \texttt{np.minimum} i \texttt{np.maximum}
+    \end{itemize}
+    \item Oznaczenie punktu optymalnego czerwoną kropką
+    \item Dodanie legendy i etykiet osi
+\end{itemize}
+
+\subsubsection{Metoda animated\_plot()}
+
+Tworzy animowany GIF pokazujący konstrukcję wykresu krok po kroku.
+
+\textbf{Algorytm animacji:}
+\begin{enumerate}
+    \item Przygotowanie klatek animacji:
+    \begin{itemize}
+        \item Klatka 0-N: Dodawanie kolejnych ograniczeń
+        \item Klatka N+1: Pokazanie obszaru dopuszczalnego
+        \item Klatka N+2: Oznaczenie punktu optymalnego
+    \end{itemize}
+    \item Funkcja \texttt{update(frame)}:
+    \begin{itemize}
+        \item Czyszczenie wykresu
+        \item Rysowanie ograniczeń do aktualnej klatki
+        \item Warunkowe dodawanie obszaru i optimum
+    \end{itemize}
+    \item Zapis do pliku GIF przy użyciu \texttt{FuncAnimation} i \texttt{pillow}
+\end{enumerate}
+
+\subsection{Moduł: gui.py}
+
+\subsubsection{Klasa MainWindow}
+
+Dziedziczy po \texttt{QWidget} z biblioteki PyQt5.
+
+\textbf{Główne komponenty UI:}
+\begin{enumerate}
+    \item \textbf{QSpinBox} - wybór liczby ograniczeń
+    \item \textbf{QTableWidget} - tabela współczynników (2 wiersze × N kolumn)
+    \item \textbf{Dynamiczne QFrames} - konfiguracja każdego ograniczenia
+    \item \textbf{QLineEdit} - pola tekstowe dla zysków
+    \item \textbf{QPushButton} - przycisk "Oblicz"
+    \item \textbf{FigureCanvas} - osadzony wykres matplotlib
+    \item \textbf{QLabel} z \textbf{QMovie} - wyświetlanie animacji GIF
+\end{enumerate}
+
+\subsubsection{Metoda update\_constraint\_inputs()}
+
+Dynamicznie aktualizuje interfejs przy zmianie liczby ograniczeń.
+
+\textbf{Algorytm:}
+\begin{enumerate}
+    \item Usunięcie wszystkich istniejących widgetów ograniczeń:
+    \begin{itemize}
+        \item Iteracja przez layouty i widgety
+        \item Wywołanie \texttt{deleteLater()} dla prawidłowego zwolnienia pamięci
+    \end{itemize}
+    \item Aktualizacja tabeli współczynników:
+    \begin{itemize}
+        \item Ustawienie liczby kolumn = liczba ograniczeń
+        \item Uzupełnienie brakujących komórek wartościami domyślnymi
+    \end{itemize}
+    \item Tworzenie nowych widgetów ograniczeń:
+    \begin{itemize}
+        \item Dla każdego ograniczenia: QFrame z QComboBox i QLineEdit
+        \item Przypisanie domyślnych wartości
+        \item Dodanie do listy \texttt{constraint\_inputs}
+    \end{itemize}
+\end{enumerate}
+
+\subsubsection{Metoda run\_script()}
+
+Wykonuje obliczenia i aktualizuje wykresy.
+
+\textbf{Algorytm:}
+\begin{enumerate}
+    \item Odczyt wszystkich danych z interfejsu:
+    \begin{itemize}
+        \item Iteracja przez komórki tabeli
+        \item Konwersja tekstów na wartości \texttt{float}
+        \item Obsługa błędów konwersji
+    \end{itemize}
+    \item Budowa struktury \texttt{constraints\_config}
+    \item Utworzenie instancji \texttt{Model} z parametrami
+    \item Wywołanie \texttt{model.solve()}
+    \item Generowanie wykresów:
+    \begin{itemize}
+        \item Statyczny wykres przez \texttt{full\_plot()}
+        \item Animacja przez \texttt{animated\_plot()}
+    \end{itemize}
+    \item Osadzenie wykresów w interfejsie:
+    \begin{itemize}
+        \item \texttt{FigureCanvas} dla statycznego wykresu
+        \item \texttt{QMovie} dla animacji GIF
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Ciekawe miejsca w programie}
+
+\subsubsection{1. Dynamiczna konfiguracja ograniczeń}
+
+\textbf{Lokalizacja:} \texttt{model.py}, linie 29-47
+
+Zamiast sztywnego kodowania ograniczeń, program wykorzystuje strukturę słowników pozwalającą na dowolną liczbę i rodzaj ograniczeń:
+
+\begin{lstlisting}[language=Python]
+for i, constraint in enumerate(self.constraints_config):
+    coef_w1 = constraint['coef_w1']
+    coef_w2 = constraint['coef_w2']
+    bound = constraint['bound']
+    sense = constraint['sense']
+    
+    if sense == '<=':
+        model += coef_w1 * x1 + coef_w2 * x2 <= bound
+    elif sense == '>=':
+        model += coef_w1 * x1 + coef_w2 * x2 >= bound
+    elif sense == '==':
+        model += coef_w1 * x1 + coef_w2 * x2 == bound
+\end{lstlisting}
+
+\textbf{Zalety:}
+\begin{itemize}
+    \item Elastyczność - łatwe dodawanie/usuwanie ograniczeń
+    \item Reużywalność - ten sam kod dla różnych problemów
+    \item Skalowalność - obsługa 1-10 ograniczeń bez zmian w kodzie
+\end{itemize}
+
+\subsubsection{2. Obliczanie obszaru dopuszczalnego}
+
+\textbf{Lokalizacja:} \texttt{model.py}, linie 68-72
+
+Program wykorzystuje operacje na tablicach NumPy do wyznaczenia przecięcia półpłaszczyzn:
+
+\begin{lstlisting}[language=Python]
+if len(constraint_lines) >= 2:
+    y_fill = np.maximum(constraint_lines[0], 0)
+    for y_line in constraint_lines[1:]:
+        y_fill = np.minimum(y_fill, y_line)
+    ax.fill_between(x, 0, y_fill, alpha=0.3, 
+                     color='lightgreen')
+\end{lstlisting}
+
+\textbf{Jak to działa:}
+\begin{enumerate}
+    \item Zaczynamy od pierwszego ograniczenia
+    \item Dla każdego kolejnego ograniczenia bierzemy minimum
+    \item Otrzymujemy dolną obwiednię - obszar spełniający wszystkie warunki $\leq$
+    \item \texttt{np.maximum(..., 0)} zapewnia nieujemność
+\end{enumerate}
+
+\subsubsection{3. Animacja z FuncAnimation}
+
+\textbf{Lokalizacja:} \texttt{model.py}, linie 108-135
+
+Wykorzystanie \texttt{matplotlib.animation.FuncAnimation} do tworzenia edukacyjnej wizualizacji:
+
+\begin{lstlisting}[language=Python]
+def update(frame):
+    ax.clear()
+    # ... ustawienia osi ...
+    
+    # Rysuj ograniczenia do aktualnej klatki
+    for i in range(frame+1):
+        if i < len(constraints):
+            ax.plot(constraints[i][0], 
+                   constraints[i][1], 
+                   label=constraints[i][2])
+    
+    # Pokaż obszar po wszystkich ograniczeniach
+    if frame >= len(constraints):
+        # ... rysowanie obszaru ...
+    
+    # Pokaż optimum na końcu
+    if frame > len(constraints):
+        ax.scatter(x1var, x2var, color='red')
+\end{lstlisting}
+
+\textbf{Efekt dydaktyczny:}
+\begin{itemize}
+    \item Student widzi jak kolejne ograniczenia "zawężają" przestrzeń rozwiązań
+    \item Łatwiej zrozumieć pojęcie obszaru dopuszczalnego
+    \item Wizualizacja procesu konstrukcji problemu
+\end{itemize}
+
+\subsubsection{4. Zarządzanie pamięcią w PyQt5}
+
+\textbf{Lokalizacja:} \texttt{gui.py}, linie 94-104
+
+Prawidłowe usuwanie widgetów w PyQt5 wymaga specjalnej obsługi:
+
+\begin{lstlisting}[language=Python]
+def clear_layout(self, layout):
+    """Rekursywne czyszczenie layoutu"""
+    while layout.count():
+        item = layout.takeAt(0)
+        if item.widget():
+            item.widget().deleteLater()
+        elif item.layout():
+            self.clear_layout(item.layout())
+\end{lstlisting}
+
+\textbf{Dlaczego to ważne:}
+\begin{itemize}
+    \item \texttt{setParent(None)} nie zawsze wystarcza
+    \item \texttt{deleteLater()} planuje usunięcie widgetu w kolejnej pętli zdarzeń
+    \item Zapobiega wyciekom pamięci przy wielokrotnej zmianie liczby ograniczeń
+    \item Obsługuje zagnieżdżone layouty rekursywnie
+\end{itemize}
+
+\subsection{Biblioteki zewnętrzne}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|l|p{10cm}|}
+\hline
+\textbf{Biblioteka} & \textbf{Zastosowanie} \\ \hline
+PuLP & Rozwiązywanie problemów programowania liniowego metodą simpleks \\ \hline
+NumPy & Operacje na tablicach numerycznych, obliczenia matematyczne \\ \hline
+Matplotlib & Tworzenie wykresów statycznych i animacji \\ \hline
+PyQt5 & Framework do budowy graficznego interfejsu użytkownika \\ \hline
+Pillow & Obsługa obrazów, zapis animacji do formatu GIF \\ \hline
+\end{tabular}
+\caption{Wykorzystane biblioteki i ich role}
+\end{table}
+
+\subsection{Struktura plików projektu}
+
+\begin{verbatim}
+task1/
+├── model.py              # Moduł logiki biznesowej
+├── gui.py                # Moduł interfejsu graficznego
+├── requirements.txt      # Lista zależności
+├── dokumentacja.tex      # Dokumentacja LaTeX
+├── test_constraints.py   # Skrypt testowy
+├── full_plot.png         # Generowany wykres statyczny
+└── animation.gif         # Generowana animacja
+\end{verbatim}
+
+%=============================================================================
+\section{Podsumowanie}
+%=============================================================================
+
+Program \textbf{Optymalizator Produkcji} stanowi kompletne narzędzie do rozwiązywania i wizualizacji zadań programowania liniowego z dwoma zmiennymi decyzyjnymi. 
+
+\textbf{Kluczowe cechy:}
+\begin{itemize}
+    \item Elastyczna konfiguracja (1-10 ograniczeń)
+    \item Intuicyjny interfejs graficzny
+    \item Automatyczne rozwiązywanie metodą simpleks
+    \item Edukacyjna wizualizacja animowana
+    \item Pełna dokumentacja użytkownika i programisty
+\end{itemize}
+
+Program może być wykorzystany zarówno w celach dydaktycznych jak i praktycznych do optymalizacji produkcji w małych przedsiębiorstwach.
+
+\end{document}
