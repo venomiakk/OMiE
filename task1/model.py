@@ -112,7 +112,6 @@ class Model:
             if coef_w2 != 0:
                 y = (bound - coef_w1 * x) / coef_w2
             else:
-                # Vertical line: x = bound / coef_w1 (if coef_w1 != 0). Keep y placeholder for compatibility.
                 y = np.full_like(x, 0)
             
             constraint_data.append({'y': y, 'sense': sense})
