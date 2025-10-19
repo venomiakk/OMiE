@@ -112,7 +112,8 @@ class Model:
             if coef_w2 != 0:
                 y = (bound - coef_w1 * x) / coef_w2
             else:
-                y = np.full_like(x, bound if coef_w1 == 0 else 0)
+                # Vertical line: x = bound / coef_w1 (if coef_w1 != 0). Keep y placeholder for compatibility.
+                y = np.full_like(x, 0)
             
             constraint_data.append({'y': y, 'sense': sense})
             label = f"K{i+1}: {coef_w1}*x+{coef_w2}*y{sense}{bound}"
@@ -132,7 +133,6 @@ class Model:
                 y_lower = np.maximum(y_lower, data['y'])
 
         # Obszar rozwiązań dopuszczalnych to miejsca, gdzie y_lower <= y <= y_upper
-        # Rysujemy tylko tam, gdzie to jest ważne
         y_fill_lower = np.maximum(y_lower, 0)
         y_fill_upper = np.minimum(y_upper, 100)
         
@@ -144,10 +144,32 @@ class Model:
         
         # Zaznaczenie rozwiązania optymalnego
         if solution_type == 'line':
-            # ZRozwiązanie na linii
-            ax.scatter(x1var, x2var, color='red', s=100, zorder=5, marker='o', label="Rozwiązanie (prosta)")
-            ax.text(x1var, x2var + 0.5, 'Nieskończenie wiele\nrozwiązań optymalnych', 
-                   ha='center', fontsize=9, bbox=dict(boxstyle='round', facecolor='yellow', alpha=0.7))
+            # Rozwiązanie na linii
+            obj_coef = [self.income_w1, self.income_w2]
+            tolerance = 1e-6
+            drawn = False
+            for i, constraint in enumerate(self.constraints_config):
+                const_coef = [constraint['coef_w1'], constraint['coef_w2']]
+                cross_product = obj_coef[0] * const_coef[1] - obj_coef[1] * const_coef[0]
+                if abs(cross_product) < tolerance:
+                    coef_w1 = constraint['coef_w1']
+                    coef_w2 = constraint['coef_w2']
+                    bound = constraint['bound']
+                    # Jeśli to linia pionowa (coef_w2 == 0), narysuj axvline
+                    if coef_w2 == 0 and coef_w1 != 0:
+                        x_const = bound / coef_w1
+                        ax.axvline(x_const, color='red', linestyle='--', linewidth=2, label='Rozwiązanie (prosta)')
+                    else:
+                        y_line = constraint_data[i]['y']
+                        ax.plot(x, y_line, color='red', linestyle='--', linewidth=2, label='Rozwiązanie (prosta)')
+
+                    ax.scatter(x1var, x2var, color='red', s=80, zorder=5, marker='o')
+                    # ax.text(x1var, x2var + 0.5, 'Nieskończenie wiele\nrozwiązań optymalnych', 
+                    #        ha='center', fontsize=9, bbox=dict(boxstyle='round', facecolor='yellow', alpha=0.7))
+                    drawn = True
+                    break
+            if not drawn:
+                ax.scatter(x1var, x2var, color='red', s=100, zorder=5, marker='o', label="Rozwiązanie (prosta)")
         elif solution_type == 'unbounded':
             ax.text(30, 6, 'Problem nieograniczony!', ha='center', fontsize=12, 
                    bbox=dict(boxstyle='round', facecolor='red', alpha=0.7))
@@ -187,7 +209,7 @@ class Model:
             if coef_w2 != 0:
                 y = (bound - coef_w1 * x) / coef_w2
             else:
-                y = np.full_like(x, bound if coef_w1 == 0 else 0)
+                y = np.full_like(x, 0)
             
             constraint_data.append({'y': y, 'sense': sense})
             label = f"K{i+1}: {coef_w1}*x+{coef_w2}*y{sense}{bound}"
@@ -248,9 +270,32 @@ class Model:
                     legend_labels.append('Obszar rozwiązań')
             
             if frame > len(constraints):
+                # Rysowanie optimum
                 if solution_type == 'line':
-                    ax.scatter(x1var, x2var, color='red', s=100, zorder=5, marker='o', label="Rozwiązanie (prosta)")
-                    legend_labels.append('Rozwiązanie (prosta)')
+                    obj_coef = [self.income_w1, self.income_w2]
+                    tolerance = 1e-6
+                    drawn = False
+                    for i, constraint in enumerate(self.constraints_config):
+                        const_coef = [constraint['coef_w1'], constraint['coef_w2']]
+                        cross_product = obj_coef[0] * const_coef[1] - obj_coef[1] * const_coef[0]
+                        if abs(cross_product) < tolerance:
+                            coef_w1 = constraint['coef_w1']
+                            coef_w2 = constraint['coef_w2']
+                            bound = constraint['bound']
+                            if coef_w2 == 0 and coef_w1 != 0:
+                                x_const = bound / coef_w1
+                                ax.axvline(x_const, color='red', linestyle='--', linewidth=2)
+                                legend_labels.append('Rozwiązanie (prosta)')
+                            else:
+                                y_line = constraint_data[i]['y']
+                                ax.plot(x, y_line, color='red', linestyle='--', linewidth=2)
+                                legend_labels.append('Rozwiązanie (prosta)')
+                            ax.scatter(x1var, x2var, color='red', s=80, zorder=5, marker='o')
+                            drawn = True
+                            break
+                    if not drawn:
+                        ax.scatter(x1var, x2var, color='red', s=100, zorder=5, label="Rozwiązanie (prosta)")
+                        legend_labels.append('Rozwiązanie (prosta)')
                 else:
                     ax.scatter(x1var, x2var, color='red', s=100, zorder=5, label="Optimum")
                     legend_labels.append('Optimum')
