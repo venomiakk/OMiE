@@ -157,10 +157,10 @@ class Model:
                     # Jeśli to linia pionowa (coef_w2 == 0), narysuj axvline
                     if coef_w2 == 0 and coef_w1 != 0:
                         x_const = bound / coef_w1
-                        ax.axvline(x_const, color='red', linestyle='--', linewidth=2, label='Rozwiązanie (prosta)')
+                        ax.axvline(x_const, color='black', linestyle='--', linewidth=2, label='Rozwiązanie (prosta)')
                     else:
                         y_line = constraint_data[i]['y']
-                        ax.plot(x, y_line, color='red', linestyle='--', linewidth=2, label='Rozwiązanie (prosta)')
+                        ax.plot(x, y_line, color='black', linestyle='--', linewidth=2, label='Rozwiązanie (prosta)')
 
                     ax.scatter(x1var, x2var, color='red', s=80, zorder=5, marker='o')
                     # ax.text(x1var, x2var + 0.5, 'Nieskończenie wiele\nrozwiązań optymalnych', 
