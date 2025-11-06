@@ -18,6 +18,8 @@ from PyQt5.QtWidgets import (
     QSpinBox,
     QFormLayout,
     QScrollArea,
+    QRadioButton,
+    QButtonGroup,
 )
 
 # Ensure we can import the local model.py in the same folder
@@ -59,6 +61,23 @@ class SimplexGUI(QMainWindow):
         self.m_spin.setMaximum(50)
         self.m_spin.valueChanged.connect(self.on_dims_changed)
         dims_layout.addWidget(self.m_spin)
+
+        # Wybór typu optymalizacji
+        opt_layout = QHBoxLayout()
+        layout.addLayout(opt_layout)
+        opt_layout.addWidget(QLabel("Typ optymalizacji:"))
+        
+        self.opt_button_group = QButtonGroup()
+        self.min_radio = QRadioButton("Minimalizacja")
+        self.max_radio = QRadioButton("Maksymalizacja")
+        self.min_radio.setChecked(True)  # Domyślnie minimalizacja
+        
+        self.opt_button_group.addButton(self.min_radio)
+        self.opt_button_group.addButton(self.max_radio)
+        
+        opt_layout.addWidget(self.min_radio)
+        opt_layout.addWidget(self.max_radio)
+        opt_layout.addStretch()
 
         # Controls: table for coefficients and b
         top_row = QHBoxLayout()
@@ -130,6 +149,15 @@ class SimplexGUI(QMainWindow):
         self.m_spin.setValue(m)
         self.n_spin.blockSignals(False)
         self.m_spin.blockSignals(False)
+        
+        # Ustaw typ optymalizacji
+        if hasattr(self.model, 'optimization_type'):
+            if self.model.optimization_type == 'max':
+                self.max_radio.setChecked(True)
+            else:
+                self.min_radio.setChecked(True)
+        else:
+            self.min_radio.setChecked(True)
 
         # Setup table with n variable columns + 1 for b
         self.table.clear()
@@ -207,6 +235,12 @@ class SimplexGUI(QMainWindow):
         m = self.model.m
         n = self.model.n
         try:
+            # Ustaw typ optymalizacji
+            if self.max_radio.isChecked():
+                self.model.optimization_type = 'max'
+            else:
+                self.model.optimization_type = 'min'
+            
             # Read table columns into x1..xn and b
             for j in range(1, n + 1):
                 col_vals = []
@@ -231,6 +265,9 @@ class SimplexGUI(QMainWindow):
             for edit in self.c_edits:
                 new_c.append(float(edit.text()))
             self.model.c = new_c
+            # Zachowaj oryginalne współczynniki przed przekształceniem
+            if hasattr(self.model, 'c_original'):
+                self.model.c_original = new_c.copy()
 
             # base
             base_text = self.base_edit.text().strip()
@@ -257,11 +294,16 @@ class SimplexGUI(QMainWindow):
         """Apply values, run solver, and display result."""
         # First apply UI values to model
         self.apply_ui_to_model()
-        self.append_log("Uruchamianie solvera...")
+        opt_type_label = "Maksymalizacja" if self.model.optimization_type == 'max' else "Minimalizacja"
+        self.append_log(f"Uruchamianie solvera (typ: {opt_type_label})...")
         try:
             x1, x2, obj_value, sol_type = self.model.solve()
             self.append_log(f"Wynik: x1={x1}, x2={x2}, obj={obj_value}, typ={sol_type}")
-            QMessageBox.information(self, "Wynik", f"Typ rozwiązania: {sol_type}\nWartość funkcji celu: {obj_value}")
+            QMessageBox.information(
+                self, 
+                "Wynik", 
+                f"Typ optymalizacji: {opt_type_label}\nTyp rozwiązania: {sol_type}\nWartość funkcji celu: {obj_value}"
+            )
         except Exception as e:
             QMessageBox.warning(self, "Błąd solvera", str(e))
             self.append_log(f"Błąd solvera: {e}")
@@ -319,6 +361,17 @@ class SimplexGUI(QMainWindow):
         else:
             c = c[:new_n]
         self.model.c = c
+        
+        # Dopasuj c_original
+        if not hasattr(self.model, 'c_original'):
+            self.model.c_original = c.copy()
+        else:
+            c_orig = self.model.c_original
+            if len(c_orig) < new_n:
+                c_orig = c_orig + [0.0] * (new_n - len(c_orig))
+            else:
+                c_orig = c_orig[:new_n]
+            self.model.c_original = c_orig
 
         # Dopasuj base (domyślnie ustaw bazę na zmienne sztuczne/slackowe)
         base = getattr(self.model, "base", [])

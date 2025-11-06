@@ -12,13 +12,22 @@ class Model:
         self.x2 = [4, 1, 2]
         self.b = [16, 8, 14]
         self.c = [-3, -2]
-        self.cb = [0, 0, 0]
-        self.base = [2,3,4] # Indeksy zmiennych bazowych
         
         # ilosc ograniczen
         self.m = len(self.b)
         # ilosc zmiennych
         self.n = len(self.c)
+        
+        # Początkowa baza: zmienne slack (indeksy od n do n+m-1)
+        self.base = [self.n + i for i in range(self.m)]
+        # Początkowe cb: wszystkie 0 (zmienne slack mają koszt 0)
+        self.cb = [0.0] * self.m
+        
+        # Typ optymalizacji: 'min' lub 'max'
+        self.optimization_type = 'min'
+        
+        # Przechowuje oryginalne współczynniki c przed przekształceniem
+        self.c_original = self.c.copy()
 
     def create_coefficients_matrix(self):
         self.cof_matrix = []
@@ -32,15 +41,30 @@ class Model:
             self.cof_matrix.append(row)
 
     def create_matrix(self):
+        """
+        Tworzy macierz ograniczeń dla algorytmu simplex.
+        Macierz ma wymiary m x (n+m), gdzie:
+        - pierwsze n kolumn to współczynniki zmiennych decyzyjnych
+        - kolejne m kolumn to zmienne slack (macierz jednostkowa)
+        """
         self.matrix = []
         for i in range(self.m):
             row = []
-            for j in range(self.n + self.m):
-                if j == 0:
-                    row.append(self.x1[i])
-                elif j == 1:
-                    row.append(self.x2[i])
-                elif j - self.n == i:
+            # Dodaj współczynniki zmiennych decyzyjnych
+            for j in range(self.n):
+                var_name = f"x{j+1}"
+                if hasattr(self, var_name):
+                    var_list = getattr(self, var_name)
+                    if i < len(var_list):
+                        row.append(var_list[i])
+                    else:
+                        row.append(0)
+                else:
+                    row.append(0)
+            
+            # Dodaj zmienne slack (macierz jednostkowa)
+            for j in range(self.m):
+                if j == i:
                     row.append(1)
                 else:
                     row.append(0)
@@ -65,8 +89,12 @@ class Model:
             
             zj_cj.append(zj - cj)
         
+        print(f"zj - cj: {[f'{val:.2f}' for val in zj_cj]}")
+        
         # Krok 2: Znajdź kolumnę pivotującą
-        # Dla minimalizacji: wybierz największe dodatnie zj - cj
+        # Dla minimalizacji: wybierz najbardziej UJEMNE cj - zj
+        # Czyli wybierz najbardziej DODATNIE zj - cj
+        # (ujemne cj-zj oznacza że zwiększenie zmiennej zmniejszy koszt)
         pivot_col = None
         max_zj_cj = 0
         
@@ -83,6 +111,9 @@ class Model:
         pivot_row = None
         min_ratio = float('inf')
         
+        print(f"Kolumna pivotująca: {pivot_col} (x{pivot_col+1})")
+        print(f"Ratios:")
+        
         for i in range(self.m):
             # Element w kolumnie pivotującej
             aij = matrix[i][pivot_col]
@@ -90,13 +121,19 @@ class Model:
             # Ratio jest obliczane tylko dla dodatnich elementów
             if aij > 0:
                 ratio = self.b[i] / aij
+                print(f"  Wiersz {i}: b[{i}]={self.b[i]:.2f} / a[{i}][{pivot_col}]={aij:.2f} = {ratio:.2f}")
                 if ratio < min_ratio:
                     min_ratio = ratio
                     pivot_row = i
+            else:
+                print(f"  Wiersz {i}: a[{i}][{pivot_col}]={aij:.2f} <= 0, pominięto")
         
         # Jeśli nie ma dodatnich elementów, problem jest nieograniczony
         if pivot_row is None:
+            print("UWAGA: Nie znaleziono dodatniego elementu - problem nieograniczony!")
             return None, None
+        
+        print(f"Wybrany wiersz: {pivot_row} (min ratio = {min_ratio:.2f})")
         
         return pivot_row, pivot_col
     
@@ -143,10 +180,40 @@ class Model:
     def solve(self):
         """
         Rozwiązuje problem programowania liniowego metodą simplex.
+        Algorytm ZAWSZE rozwiązuje problem MINIMALIZACJI.
+        Dla maksymalizacji: mnoży współczynniki przez -1, rozwiązuje jako min, mnoży wynik przez -1.
         
         Returns:
             tuple: (x1, x2, obj_value, solution_type)
         """
+        # Zachowaj oryginalne wartości c i cb
+        original_c = self.c.copy()
+        original_cb = self.cb.copy()
+        original_base = self.base.copy()
+        
+        # POPRAWKA: Upewnij się że cb jest poprawnie ustawione dla początkowej bazy
+        for i in range(self.m):
+            if self.base[i] < self.n:
+                # Zmienna decyzyjna w bazie
+                self.cb[i] = self.c[self.base[i]]
+            else:
+                # Zmienna slack w bazie
+                self.cb[i] = 0
+        
+        # Przekształć funkcję celu jeśli to MAKSYMALIZACJA
+        if self.optimization_type == 'max':
+            print("Przekształcam problem maksymalizacji do minimalizacji...")
+            print(f"Oryginalne współczynniki c: {original_c}")
+            # Mnożymy przez -1 aby zamienić max na min
+            self.c = [-c for c in original_c]
+            print(f"Przekształcone współczynniki c: {self.c}")
+            # Zaktualizuj cb dla zmiennych bazowych
+            for i in range(self.m):
+                if self.base[i] < self.n:
+                    self.cb[i] = self.c[self.base[i]]
+                else:
+                    self.cb[i] = 0
+        
         # Inicjalizacja macierzy
         self.create_matrix()
         matrix = self.matrix
@@ -154,7 +221,10 @@ class Model:
         max_iterations = 100
         iteration = 0
         
-        print("Rozpoczynam rozwiązywanie metodą simplex...")
+        print("Rozpoczynam rozwiązywanie metodą simplex (MINIMALIZACJA)...")
+        print(f"Typ optymalizacji wybrany przez użytkownika: {self.optimization_type}")
+        print(f"Współczynniki c (dla minimalizacji): {self.c}")
+        print(f"Początkowa baza: {self.base} (cb={self.cb})")
         print(f"Początkowa macierz:")
         self.print_tableau(matrix)
         
@@ -180,6 +250,9 @@ class Model:
         
         if iteration >= max_iterations:
             print("Osiągnięto maksymalną liczbę iteracji!")
+            # Przywróć oryginalne wartości
+            self.c = original_c
+            self.cb = original_cb
             return None, None, None, "MAX_ITERATIONS"
         
         # Odczytaj rozwiązanie
@@ -191,29 +264,52 @@ class Model:
         x1 = x[0] if self.n > 0 else 0
         x2 = x[1] if self.n > 1 else 0
         
-        # Oblicz wartość funkcji celu
+        # Oblicz wartość funkcji celu używając przekształconych współczynników
         obj_value = sum(self.c[j] * x[j] for j in range(self.n))
         
-        print(f"\nRozwiązanie:")
+        # Jeśli to była maksymalizacja, przekształć wynik z powrotem
+        if self.optimization_type == 'max':
+            obj_value = -obj_value
+            print(f"\nPrzekształcam wynik z minimalizacji do maksymalizacji...")
+            print(f"Wartość funkcji celu (po przekształceniu): {obj_value:.4f}")
+        
+        # Przywróć oryginalne wartości c i cb
+        self.c = original_c
+        self.cb = original_cb
+        
+        print(f"\nRozwiązanie końcowe:")
         print(f"x1 = {x1:.4f}")
         print(f"x2 = {x2:.4f}")
-        print(f"Wartość funkcji celu = {obj_value:.4f}")
+        if self.optimization_type == 'max':
+            print(f"Wartość funkcji celu (maksymalizacja) = {obj_value:.4f}")
+        else:
+            print(f"Wartość funkcji celu (minimalizacja) = {obj_value:.4f}")
         
         return x1, x2, obj_value, "OPTIMAL"
     
     def print_tableau(self, matrix):
         """Wyświetla tablicę simplex."""
-        print("\nBaza | ", end="")
+        print("\nBaza | cb  |", end="")
         for j in range(self.n + self.m):
-            print(f"x{j+1:2d}  ", end="")
+            print(f" x{j+1:2d}  ", end="")
         print(" | b")
-        print("-" * (8 + 6 * (self.n + self.m) + 8))
+        print("-" * (13 + 6 * (self.n + self.m) + 8))
         
         for i in range(self.m):
-            print(f"x{self.base[i]+1:2d}   | ", end="")
+            base_var = self.base[i]
+            print(f"x{base_var+1:2d}  | {self.cb[i]:4.1f} |", end="")
             for j in range(len(matrix[i])):
-                print(f"{matrix[i][j]:5.2f} ", end="")
-            print(f"| {self.b[i]:5.2f}")
+                print(f" {matrix[i][j]:5.2f}", end="")
+            print(f" | {self.b[i]:6.2f}")
+        
+        # Oblicz i wyświetl wiersz zj-cj
+        print("-" * (13 + 6 * (self.n + self.m) + 8))
+        print("zj-cj|     |", end="")
+        for j in range(self.n + self.m):
+            zj = sum(self.cb[i] * matrix[i][j] for i in range(self.m))
+            cj = self.c[j] if j < self.n else 0
+            print(f" {zj-cj:5.2f}", end="")
+        print(" |")
     
 if __name__ == '__main__':
     model = Model()
