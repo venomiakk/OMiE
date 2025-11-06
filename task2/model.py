@@ -131,7 +131,7 @@ class Model:
         # Jeśli nie ma dodatnich elementów, problem jest nieograniczony
         if pivot_row is None:
             print("UWAGA: Nie znaleziono dodatniego elementu - problem nieograniczony!")
-            return None, None
+            return -1, pivot_col
         
         print(f"Wybrany wiersz: {pivot_row} (min ratio = {min_ratio:.2f})")
         
@@ -239,6 +239,12 @@ class Model:
             if pivot_row is None or pivot_col is None:
                 print("Rozwiązanie optymalne znalezione!")
                 break
+            if pivot_row == -1:
+                print("Problem jest nieograniczony (UNBOUNDED)!")
+                # Przywróć oryginalne wartości
+                self.c = original_c
+                self.cb = original_cb
+                return None, None, None, "UNBOUNDED"
             
             print(f"Element pivotujący: wiersz {pivot_row}, kolumna {pivot_col}")
             

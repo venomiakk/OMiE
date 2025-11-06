@@ -299,11 +299,13 @@ class SimplexGUI(QMainWindow):
         try:
             x1, x2, obj_value, sol_type = self.model.solve()
             self.append_log(f"Wynik: x1={x1}, x2={x2}, obj={obj_value}, typ={sol_type}")
-            QMessageBox.information(
-                self, 
-                "Wynik", 
-                f"Typ optymalizacji: {opt_type_label}\nTyp rozwiązania: {sol_type}\nWartość funkcji celu: {obj_value}"
-            )
+            if sol_type == "UNBOUNDED":
+                msg = (f"Typ optymalizacji: {opt_type_label}\nTyp rozwiązania: {sol_type}\n"
+                       "UWAGA: Funkcja celu jest nieograniczona!\n"
+                       "Problem nie posiada ograniczenia w tym kierunku.")
+            else:
+                msg = (f"Typ optymalizacji: {opt_type_label}\nTyp rozwiązania: {sol_type}\nWartość funkcji celu: {obj_value}")
+            QMessageBox.information(self, "Wynik", msg)
         except Exception as e:
             QMessageBox.warning(self, "Błąd solvera", str(e))
             self.append_log(f"Błąd solvera: {e}")
