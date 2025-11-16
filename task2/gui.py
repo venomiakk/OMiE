@@ -298,7 +298,41 @@ class SimplexGUI(QMainWindow):
         self.append_log(f"Uruchamianie solvera (typ: {opt_type_label})...")
         try:
             x1, x2, obj_value, sol_type = self.model.solve()
-            self.append_log(f"Wynik: x1={x1}, x2={x2}, obj={obj_value}, typ={sol_type}")
+
+            # Pokaż w polu tekstowym tylko tabele iteracji z modelu (jeżeli są)
+            iterations = getattr(self.model, 'iteration_tableaus', None)
+            if iterations:
+                # ustaw cały tekst na serializowane tabele (oddzielone pustą linią)
+                self.log.setPlainText('\n\n'.join(iterations))
+            else:
+                # fallback: dodaj podstawowe info
+                self.append_log(f"Wynik: x1={x1}, x2={x2}, obj={obj_value}, typ={sol_type}")
+
+            # Pokaż wszystkie zmienne decyzyjne w okienku wyniku
+            sol_vec = getattr(self.model, 'solution_vector', None)
+            n = getattr(self.model, 'n', 2)
+            result_lines = []
+            if sol_vec:
+                for j in range(n):
+                    # upewnij się, że sol_vec ma odpowiednią długość
+                    val = sol_vec[j] if j < len(sol_vec) else 0.0
+                    result_lines.append(f"x{j+1} = {val}")
+            else:
+                # fallback na wartości zwrócone bezpośrednio
+                result_lines.append(f"x1 = {x1}")
+                result_lines.append(f"x2 = {x2}")
+
+            # Dodaj krótkie podsumowanie wartości celu
+            result_lines.append(f"Funkcja celu = {obj_value}\nTyp rozwiązania: {sol_type}")
+
+            # Doklej wynik pod tabelami (jeżeli tabele są pokazane - oddzieli je)
+            if iterations:
+                # dopisz do istniejącego tekstu
+                self.log.append('\n'.join(result_lines))
+            else:
+                # zastąp log krótkim wynikiem
+                self.log.append('\n'.join(result_lines))
+
             QMessageBox.information(
                 self, 
                 "Wynik", 
