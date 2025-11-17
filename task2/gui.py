@@ -287,7 +287,6 @@ class SimplexGUI(QMainWindow):
         self.append_log(f"Uruchamianie solvera (typ: {opt_type_label})...")
         try:
             x1, x2, obj_value, sol_type = self.model.solve()
-<<<<<<< HEAD
 
             # Pokaż w polu tekstowym tylko tabele iteracji z modelu (jeżeli są)
             iterations = getattr(self.model, 'iteration_tableaus', None)
@@ -323,9 +322,6 @@ class SimplexGUI(QMainWindow):
                 # zastąp log krótkim wynikiem
                 self.log.append('\n'.join(result_lines))
 
-=======
-            self.append_log(f"Wynik: x1={x1}, x2={x2}, obj={obj_value}, typ={sol_type}")
->>>>>>> parent of 54b4f39 (pokazuje nieograniczone)
             QMessageBox.information(
                 self, 
                 "Wynik", 
