@@ -217,6 +217,9 @@ class Model:
         # Inicjalizacja macierzy
         self.create_matrix()
         matrix = self.matrix
+
+        # przygotuj miejsce na zapis iteracji (stringi tablic)
+        self.iteration_tableaus = []
         
         max_iterations = 100
         iteration = 0
@@ -227,6 +230,12 @@ class Model:
         print(f"Początkowa baza: {self.base} (cb={self.cb})")
         print(f"Początkowa macierz:")
         self.print_tableau(matrix)
+        # zapisz początkową tablicę
+        try:
+            self.iteration_tableaus.append(self.tableau_to_string(matrix))
+        except Exception:
+            # w razie problemów z konwersją ignoruj
+            pass
         
         while iteration < max_iterations:
             iteration += 1
@@ -253,6 +262,11 @@ class Model:
             
             print(f"Macierz po pivotowaniu:")
             self.print_tableau(matrix)
+            # zapisz tablicę po pivotowaniu
+            try:
+                self.iteration_tableaus.append(self.tableau_to_string(matrix))
+            except Exception:
+                pass
         
         if iteration >= max_iterations:
             print("Osiągnięto maksymalną liczbę iteracji!")
@@ -269,7 +283,7 @@ class Model:
         
         x1 = x[0] if self.n > 0 else 0
         x2 = x[1] if self.n > 1 else 0
-        
+
         # Oblicz wartość funkcji celu używając przekształconych współczynników
         obj_value = sum(self.c[j] * x[j] for j in range(self.n))
         
@@ -278,6 +292,10 @@ class Model:
             obj_value = -obj_value
             print(f"\nPrzekształcam wynik z minimalizacji do maksymalizacji...")
             print(f"Wartość funkcji celu (po przekształceniu): {obj_value:.4f}")
+
+        # Zapisz wektor rozwiązania i wartość celu w obiekcie (dla GUI)
+        self.solution_vector = x
+        self.solution_obj = obj_value
         
         # Przywróć oryginalne wartości c i cb
         self.c = original_c
@@ -316,6 +334,37 @@ class Model:
             cj = self.c[j] if j < self.n else 0
             print(f" {zj-cj:5.2f}", end="")
         print(" |")
+
+    def tableau_to_string(self, matrix):
+        """Zwraca reprezentację tablicy simplex jako string (użyteczne do GUI)."""
+        lines = []
+        header = []
+        header.append("Baza | cb  |")
+        for j in range(self.n + self.m):
+            header.append(f" x{j+1:2d}  ")
+        header.append(" | b")
+        lines.append("".join(header))
+        sep = "-" * (13 + 6 * (self.n + self.m) + 8)
+        lines.append(sep)
+
+        for i in range(self.m):
+            base_var = self.base[i]
+            row = f"x{base_var+1:2d}  | {self.cb[i]:4.1f} |"
+            for j in range(len(matrix[i])):
+                row += f" {matrix[i][j]:5.2f}"
+            row += f" | {self.b[i]:6.2f}"
+            lines.append(row)
+
+        lines.append(sep)
+        zj_row = "zj-cj|     |"
+        for j in range(self.n + self.m):
+            zj = sum(self.cb[i] * matrix[i][j] for i in range(self.m))
+            cj = self.c[j] if j < self.n else 0
+            zj_row += f" {zj-cj:5.2f}"
+        zj_row += " |"
+        lines.append(zj_row)
+
+        return "\n".join(lines)
     
 if __name__ == '__main__':
     model = Model()

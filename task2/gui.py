@@ -107,13 +107,7 @@ class SimplexGUI(QMainWindow):
         self.scroll.setWidget(form_widget)
         right_col.addWidget(self.scroll)
 
-        right_col.addWidget(QLabel("Indeksy bazowe (oddzielone przecinkami, 0-based):"))
-        self.base_edit = QLineEdit()
-        right_col.addWidget(self.base_edit)
-
-        right_col.addWidget(QLabel("Wartości cb (oddzielone przecinkami):"))
-        self.cb_edit = QLineEdit()
-        right_col.addWidget(self.cb_edit)
+        # base/cb are set automatically by the GUI (no manual input)
 
         # Buttons
         btn_row = QHBoxLayout()
@@ -221,12 +215,7 @@ class SimplexGUI(QMainWindow):
             self.c_edits.append(edit)
 
         # base and cb
-        self.base_edit.setText(
-            ",".join(str(x) for x in getattr(self.model, "base", []))
-        )
-        self.cb_edit.setText(
-            ",".join(str(x) for x in getattr(self.model, "cb", []))
-        )
+        # base and cb are automatic; don't show editable fields
 
         self.append_log("Model załadowany do UI")
 
@@ -270,19 +259,15 @@ class SimplexGUI(QMainWindow):
                 self.model.c_original = new_c.copy()
 
             # base
-            base_text = self.base_edit.text().strip()
-            if base_text:
-                base_vals = [int(x.strip()) for x in base_text.split(",") if x.strip()]
-                self.model.base = base_vals
-
-            # cb
-            cb_text = self.cb_edit.text().strip()
-            if cb_text:
-                cb_vals = [float(x.strip()) for x in cb_text.split(",") if x.strip()]
-                self.model.cb = cb_vals
+            # base and cb are set automatically to slack variables
+            # base indices start after decision variables: [n, n+1, ..., n+m-1]
 
             # Upewnij się, że długości list odpowiadają nowym wymiarom
             self._ensure_model_shapes()
+
+            # Ustaw bazę i cb automatycznie (zmienne slack od n do n+m-1)
+            self.model.base = [self.model.n + i for i in range(self.model.m)]
+            self.model.cb = [0.0] * self.model.m
 
             self.append_log("Wartości zastosowane do modelu")
             QMessageBox.information(self, "Zastosowano", "Wartości zastosowane do modelu.")
@@ -292,20 +277,56 @@ class SimplexGUI(QMainWindow):
 
     def solve_model(self):
         """Apply values, run solver, and display result."""
-        # First apply UI values to model
+        # Create a fresh Model for this solve so previous state won't leak
+        self.model = Model()
+        # Ensure its shapes match the UI before applying values
+        self.rebuild_model_structure(int(self.m_spin.value()), int(self.n_spin.value()))
+        # Then apply UI values into this fresh model
         self.apply_ui_to_model()
         opt_type_label = "Maksymalizacja" if self.model.optimization_type == 'max' else "Minimalizacja"
         self.append_log(f"Uruchamianie solvera (typ: {opt_type_label})...")
         try:
             x1, x2, obj_value, sol_type = self.model.solve()
-            self.append_log(f"Wynik: x1={x1}, x2={x2}, obj={obj_value}, typ={sol_type}")
-            if sol_type == "UNBOUNDED":
-                msg = (f"Typ optymalizacji: {opt_type_label}\nTyp rozwiązania: {sol_type}\n"
-                       "UWAGA: Funkcja celu jest nieograniczona!\n"
-                       "Problem nie posiada ograniczenia w tym kierunku.")
+
+            # Pokaż w polu tekstowym tylko tabele iteracji z modelu (jeżeli są)
+            iterations = getattr(self.model, 'iteration_tableaus', None)
+            if iterations:
+                # ustaw cały tekst na serializowane tabele (oddzielone pustą linią)
+                self.log.setPlainText('\n\n'.join(iterations))
             else:
-                msg = (f"Typ optymalizacji: {opt_type_label}\nTyp rozwiązania: {sol_type}\nWartość funkcji celu: {obj_value}")
-            QMessageBox.information(self, "Wynik", msg)
+                # fallback: dodaj podstawowe info
+                self.append_log(f"Wynik: x1={x1}, x2={x2}, obj={obj_value}, typ={sol_type}")
+
+            # Pokaż wszystkie zmienne decyzyjne w okienku wyniku
+            sol_vec = getattr(self.model, 'solution_vector', None)
+            n = getattr(self.model, 'n', 2)
+            result_lines = []
+            if sol_vec:
+                for j in range(n):
+                    # upewnij się, że sol_vec ma odpowiednią długość
+                    val = sol_vec[j] if j < len(sol_vec) else 0.0
+                    result_lines.append(f"x{j+1} = {val}")
+            else:
+                # fallback na wartości zwrócone bezpośrednio
+                result_lines.append(f"x1 = {x1}")
+                result_lines.append(f"x2 = {x2}")
+
+            # Dodaj krótkie podsumowanie wartości celu
+            result_lines.append(f"Funkcja celu = {obj_value}\nTyp rozwiązania: {sol_type}")
+
+            # Doklej wynik pod tabelami (jeżeli tabele są pokazane - oddzieli je)
+            if iterations:
+                # dopisz do istniejącego tekstu
+                self.log.append('\n'.join(result_lines))
+            else:
+                # zastąp log krótkim wynikiem
+                self.log.append('\n'.join(result_lines))
+
+            QMessageBox.information(
+                self, 
+                "Wynik", 
+                f"Typ optymalizacji: {opt_type_label}\nTyp rozwiązania: {sol_type}\nWartość funkcji celu: {obj_value}"
+            )
         except Exception as e:
             QMessageBox.warning(self, "Błąd solvera", str(e))
             self.append_log(f"Błąd solvera: {e}")
