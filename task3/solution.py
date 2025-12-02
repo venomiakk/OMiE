@@ -12,13 +12,13 @@ class TransportSolution:
                 for i in range(len(supply)):
                     self.costs[i].append(0)
 
-        print("Is balanced:", sum(demand) == sum(supply))
-        for row in self.costs:
-            for value in row:
-                print(value, end=' ')
-            print("\n") 
+        # print("Is balanced:", sum(demand) == sum(supply))
+        # for row in self.costs:
+        #     for value in row:
+        #         print(value, end=' ')
+        #     print("\n") 
 
-        print("-----------")
+        # print("-----------")
 
     def north_west(self):
         supply = self.supply[:]
@@ -47,7 +47,11 @@ class TransportSolution:
         return result, quantity
 
     def min_matrix(self):
-
+        supply = self.supply[:]
+        demand = self.demand[:]
+        costs = [row [:] for row in self.costs]
+        quantity = [[0 for _ in range(len(demand))] for _ in range(len(supply))]
+        
         def find_min_position():
             min_cost = float('inf')
             min_pos = (-1, -1)
@@ -57,12 +61,7 @@ class TransportSolution:
                         min_cost = costs[i][j]
                         min_pos = (i, j)
             return min_pos
-
-        supply = self.supply[:]
-        demand = self.demand[:]
-        costs = [row [:] for row in self.costs]
-        quantity = [[0 for _ in range(len(demand))] for _ in range(len(supply))]
-
+        
         while True:
             i, j = find_min_position()
             if i == -1 and j == -1:
@@ -88,7 +87,12 @@ class TransportSolution:
 
         return result, quantity
 
-    def min_col(self):
+    def min_col(self):      
+        supply = self.supply[:]
+        demand = self.demand[:]
+        costs = [row [:] for row in self.costs]
+        quantity = [[0 for _ in range(len(demand))] for _ in range(len(supply))]
+        
         def find_min_position_column():
             min_cost = float('inf')
             position = -1
@@ -98,12 +102,7 @@ class TransportSolution:
                     position = k
             
             return position
-            
-        supply = self.supply[:]
-        demand = self.demand[:]
-        costs = [row [:] for row in self.costs]
-        quantity = [[0 for _ in range(len(demand))] for _ in range(len(supply))]
-        
+
         for j in range(len(demand)):
             column = []
             for i in range(len(supply)):
@@ -135,6 +134,11 @@ class TransportSolution:
         return result, quantity
 
     def min_row(self):
+        supply = self.supply[:]
+        demand = self.demand[:]
+        costs = [row [:] for row in self.costs]
+        quantity = [[0 for _ in range(len(demand))] for _ in range(len(supply))]
+
         def find_min_position_row():
             min_cost = float('inf')
             position = -1
@@ -144,10 +148,6 @@ class TransportSolution:
                     position = k
 
             return position
-        supply = self.supply[:]
-        demand = self.demand[:]
-        costs = [row [:] for row in self.costs]
-        quantity = [[0 for _ in range(len(demand))] for _ in range(len(supply))]
 
         for i in range(len(supply)):
             row = costs[i]
@@ -177,53 +177,82 @@ class TransportSolution:
         return result, quantity
 
     def vam(self):
-        def abs_diff_col():
-            diffs = []
-            max_value = float('-inf')
-            position = -1
-            if j < len(demand) - 1:
-                for k in range(len(supply)):
-                    diffs.append(abs(costs[k][j] - costs[k][j+1]))
-                for k in range(len(supply)):
-                    if diffs[k] > max_value and demand[j] > 0 and supply[k] > 0:
-                        max_value = diffs[k]
-                        position = k
-            else:
-                for k in range(len(supply)):
-                    if costs[k][j] > max_value and demand[j] > 0 and supply[k] > 0:
-                        max_value = costs[k][j]
-                        position = k
-            return position
-        
         supply = self.supply[:]
         demand = self.demand[:]
         costs = [row [:] for row in self.costs]
         quantity = [[0 for _ in range(len(demand))] for _ in range(len(supply))]
 
-        for j in range(len(demand)):
-            while True:
-                i = abs_diff_col()
-                if i == -1:
-                    break
-                
-                if supply[i] < demand[j]:
-                    quantity[i][j] = supply[i]
-                    demand[j] -= supply[i]
-                    supply[i] = 0
-                    # costs[i] = [float('inf')] * len(demand)
-                else:
-                    quantity[i][j] = demand[j]
-                    supply[i] -= demand[j]
-                    demand[j] = 0
-                    # for k in range(len(supply)):
-                    #     costs[k][j] = float('inf')
+        def calculate_penalties():
+            row_penalties = [0 for _ in range(len(supply))]
+            col_penalties = [0 for _ in range(len(demand))]
 
+            for i in range(len(supply)):
+                if supply[i] <= 0:          # skip exhausted rows
+                    row_penalties[i] = 0
+                    continue
+                valid_costs = [costs[i][j] for j in range(len(demand)) if demand[j] > 0]
+                if len(valid_costs) >= 2:
+                    sorted_costs = sorted(valid_costs)
+                    row_penalties[i] = sorted_costs[1] - sorted_costs[0]
+                elif len(valid_costs) == 1:
+                    row_penalties[i] = valid_costs[0]
+
+            for j in range(len(demand)):
+                if demand[j] <= 0:         # skip exhausted columns
+                    col_penalties[j] = 0
+                    continue
+                valid_costs = [costs[i][j] for i in range(len(supply)) if supply[i] > 0]
+                if len(valid_costs) >= 2:
+                    sorted_costs = sorted(valid_costs)
+                    col_penalties[j] = sorted_costs[1] - sorted_costs[0]
+                elif len(valid_costs) == 1:
+                    col_penalties[j] = valid_costs[0]
+
+            return row_penalties, col_penalties
+        
+        row_penalties, col_penalties = calculate_penalties()
+
+        while True:
+            max_row_penalty = max(row_penalties)
+            max_col_penalty = max(col_penalties)
+
+            if max_row_penalty == 0 and max_col_penalty == 0:
+                break
+
+            if max_row_penalty >= max_col_penalty:
+                i = row_penalties.index(max_row_penalty)
+                j = min((costs[i][k], k) for k in range(len(demand)) if demand[k] > 0)[1]
+            else:
+                j = col_penalties.index(max_col_penalty)
+                i = min((costs[k][j], k) for k in range(len(supply)) if supply[k] > 0)[1]
+
+            # jeśli wybrana pozycja ma supply==0 lub demand==0, ustaw penalizację na 0 i kontynuuj
+            if supply[i] <= 0 or demand[j] <= 0:
+                row_penalties[i] = 0
+                col_penalties[j] = 0
+                row_penalties, col_penalties = calculate_penalties()
+                continue
+
+            if supply[i] < demand[j]:
+                quantity[i][j] = supply[i]
+                demand[j] -= supply[i]
+                supply[i] = 0
+                costs[i] = [float('inf')] * len(demand)   # oznacz wyczerpany wiersz
+            else:
+                quantity[i][j] = demand[j]
+                supply[i] -= demand[j]
+                demand[j] = 0
+                for k in range(len(supply)):
+                    costs[k][j] = float('inf')             # oznacz wyczerpaną kolumnę
+
+            row_penalties, col_penalties = calculate_penalties()
         i, j = 0, 0
         result = 0
         for i in range(len(supply)):
             for j in range(len(demand)):
                 result += quantity[i][j] * self.costs[i][j]
         return result, quantity
+
 
 
 if __name__ == "__main__":
@@ -243,13 +272,15 @@ if __name__ == "__main__":
     supply = [300, 450, 800]
     demand = [630, 160, 170, 340]
     model = TransportSolution(costs, demand, supply)
-    print("-----nw-------")
-    print(model.north_west())
-    print("-----min matrix-------")
-    print(model.min_matrix())
-    print("-----min col-------")
-    print(model.min_col())
-    print("-----min row-------")
-    print(model.min_row())
+    # print("-----nw-------")
+    # print(model.north_west())
+    # print("-----min matrix-------")
+    # print(model.min_matrix())
+    # print("-----min col-------")
+    # print(model.min_col())
+    # print("-----min row-------")
+    # print(model.min_row())
     print("-----vam-------")
     print(model.vam())
+    print(model.supply)
+    print(model.demand)
