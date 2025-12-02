@@ -15,7 +15,7 @@ class TransportOptimization:
 
         m = len(self.supply)
         n = len(self.demand)
-        print(self.quantity)
+
         quantity = [row[:] for row in self.quantity]
 
         # helper: list of basic cells (i,j) with quantity>0
@@ -196,25 +196,26 @@ class TransportOptimization:
 
 
 if __name__ == "__main__":
-    # costs = [
-    #     [3,4,7,1],
-    #     [5,1,3,2],
-    #     [2,4,5,4]
-    # ]
-    # supply = [100, 150, 100]
-    # demand = [80, 120, 120, 30]
-    
     costs = [
-    [10, 40, 50, 20],
-    [20, 60, 40, 60],
-    [30, 30, 30, 40]
+        [3,4,7,1],
+        [5,1,3,2],
+        [2,4,5,4]
     ]
-    supply = [300, 450, 800]
-    demand = [630, 160, 170, 340]
+    supply = [100, 150, 100]
+    demand = [80, 120, 120, 30]
+    
+    # costs = [
+    # [10, 40, 50, 20],
+    # [20, 60, 40, 60],
+    # [30, 30, 30, 40]
+    # ]
+    # supply = [300, 450, 800]
+    # demand = [630, 160, 170, 340]
 
     from solution import TransportSolution
     model = TransportSolution(costs, demand, supply)
     results, quantity = model.vam()
+    print(results)
     costs = model.costs
     supply = model.supply
     demand = model.demand
