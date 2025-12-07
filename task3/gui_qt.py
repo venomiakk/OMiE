@@ -50,7 +50,7 @@ class TransportQtApp(QtWidgets.QWidget):
         self.input_group.setLayout(self.input_layout)
         main_layout.addWidget(self.input_group)
 
-        # Scroll area for results
+        # results area
         self.results_area = QtWidgets.QScrollArea()
         self.results_widget = QtWidgets.QWidget()
         self.results_layout = QtWidgets.QVBoxLayout(self.results_widget)
@@ -63,7 +63,6 @@ class TransportQtApp(QtWidgets.QWidget):
         self.build_tables()
 
     def build_tables(self):
-        # clear layout
         while self.input_layout.count():
             item = self.input_layout.takeAt(0)
             w = item.widget()
@@ -73,24 +72,20 @@ class TransportQtApp(QtWidgets.QWidget):
         m = max(1, self.rows_spin.value())
         n = max(1, self.cols_spin.value())
 
-        # single input table: costs (m x n) + supply (last column) + demand (last row)
         if self.input_table:
             self.input_table.deleteLater()
-        rows = m + 1  # extra row for demand
-        cols = n + 1  # extra col for supply
+        rows = m + 1
+        cols = n + 1
         self.input_table = QtWidgets.QTableWidget(rows, cols)
-        # horizontal headers: Z1..Zn, last column "Podaż"
         h_labels = [f"Z{j+1}" for j in range(n)] + ["Podaż"]
         v_labels = [f"H{i+1}" for i in range(m)] + ["Popyt"]
         self.input_table.setHorizontalHeaderLabels(h_labels)
         self.input_table.setVerticalHeaderLabels(v_labels)
         self.input_table.setEditTriggers(QtWidgets.QAbstractItemView.AllEditTriggers)
-        # allow table to expand and show contents; don't artificially cap maximum size
         self.input_table.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         self.input_table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
         self.input_table.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
 
-        # fill costs
         for i in range(m):
             for j in range(n):
                 item = QtWidgets.QTableWidgetItem()
@@ -100,7 +95,6 @@ class TransportQtApp(QtWidgets.QWidget):
                     item.setText('0')
                 self.input_table.setItem(i, j, item)
 
-        # fill supply in last column
         for i in range(m):
             item = QtWidgets.QTableWidgetItem()
             try:
@@ -109,7 +103,6 @@ class TransportQtApp(QtWidgets.QWidget):
                 item.setText('0')
             self.input_table.setItem(i, n, item)
 
-        # fill demand in last row
         for j in range(n):
             item = QtWidgets.QTableWidgetItem()
             try:
@@ -118,22 +111,17 @@ class TransportQtApp(QtWidgets.QWidget):
                 item.setText('0')
             self.input_table.setItem(m, j, item)
 
-        # bottom-right cell empty
         self.input_layout.addWidget(self.input_table, 0, 0, rows, cols)
 
-        # make input table show all content without inner scrollbars where possible
         self.input_table.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         self.input_table.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-        # compute sizes and set minimum size only (do NOT set maximum) so table can expand
         self._adjust_table_size(self.input_table)
 
     def read_inputs(self):
-        # reconstruct matrix from QTableWidgets
         m = max(1, self.rows_spin.value())
         n = max(1, self.cols_spin.value())
         costs = [[0] * n for _ in range(m)]
         try:
-            # costs block
             for i in range(m):
                 for j in range(n):
                     item = self.input_table.item(i, j)
@@ -180,7 +168,6 @@ class TransportQtApp(QtWidgets.QWidget):
             ("VAM", model.vam),
         ]
 
-        # clear previous results
         while self.results_layout.count():
             item = self.results_layout.takeAt(0)
             w = item.widget()
@@ -230,7 +217,6 @@ class TransportQtApp(QtWidgets.QWidget):
         m = len(matrix)
         n = len(matrix[0]) if m > 0 else 0
         table = QtWidgets.QTableWidget(m, n)
-        # set headers Zx / Hx
         table.setHorizontalHeaderLabels([f"Z{j+1}" for j in range(n)])
         table.setVerticalHeaderLabels([f"H{i+1}" for i in range(m)])
         table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
@@ -238,18 +224,15 @@ class TransportQtApp(QtWidgets.QWidget):
             for j in range(n):
                 item = QtWidgets.QTableWidgetItem(str(matrix[i][j]))
                 table.setItem(i, j, item)
-        # resize to content and set minimum size so individual table doesn't scroll internally
         table.resizeColumnsToContents()
         table.resizeRowsToContents()
         table.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         table.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-        # allow tables to expand (set minimum only)
         self._adjust_table_size(table)
         v.addWidget(table)
         return widget
 
     def _adjust_table_size(self, table: QtWidgets.QTableWidget):
-        # ensure table expands to show all content without its own scrollbars
         table.resizeColumnsToContents()
         table.resizeRowsToContents()
         width = table.verticalHeader().width()
@@ -258,9 +241,8 @@ class TransportQtApp(QtWidgets.QWidget):
         height = table.horizontalHeader().height()
         for row in range(table.rowCount()):
             height += table.rowHeight(row)
-        # add some margins
+        # marginesy
         table.setMinimumSize(width + 8, height + 8)
-        # do NOT set maximum size so table may expand with window
 
 
 def main():

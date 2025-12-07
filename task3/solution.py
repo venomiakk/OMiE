@@ -187,7 +187,7 @@ class TransportSolution:
             col_penalties = [0 for _ in range(len(demand))]
 
             for i in range(len(supply)):
-                if supply[i] <= 0:          # skip exhausted rows
+                if supply[i] <= 0:
                     row_penalties[i] = 0
                     continue
                 valid_costs = [costs[i][j] for j in range(len(demand)) if demand[j] > 0]
@@ -198,7 +198,7 @@ class TransportSolution:
                     row_penalties[i] = valid_costs[0]
 
             for j in range(len(demand)):
-                if demand[j] <= 0:         # skip exhausted columns
+                if demand[j] <= 0:
                     col_penalties[j] = 0
                     continue
                 valid_costs = [costs[i][j] for i in range(len(supply)) if supply[i] > 0]
@@ -226,7 +226,6 @@ class TransportSolution:
                 j = col_penalties.index(max_col_penalty)
                 i = min((costs[k][j], k) for k in range(len(supply)) if supply[k] > 0)[1]
 
-            # jeśli wybrana pozycja ma supply==0 lub demand==0, ustaw penalizację na 0 i kontynuuj
             if supply[i] <= 0 or demand[j] <= 0:
                 row_penalties[i] = 0
                 col_penalties[j] = 0
@@ -237,13 +236,13 @@ class TransportSolution:
                 quantity[i][j] = supply[i]
                 demand[j] -= supply[i]
                 supply[i] = 0
-                costs[i] = [float('inf')] * len(demand)   # oznacz wyczerpany wiersz
+                costs[i] = [float('inf')] * len(demand)
             else:
                 quantity[i][j] = demand[j]
                 supply[i] -= demand[j]
                 demand[j] = 0
                 for k in range(len(supply)):
-                    costs[k][j] = float('inf')             # oznacz wyczerpaną kolumnę
+                    costs[k][j] = float('inf')
 
             row_penalties, col_penalties = calculate_penalties()
         i, j = 0, 0

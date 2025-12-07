@@ -8,17 +8,13 @@ class TransportOptimization:
         self.demand = demand
 
     def optimize(self, max_iter=1000):
-        """Optimize transportation plan using the potentials method (MODI).
-
-        Returns: (total_cost, quantity)
-        """
 
         m = len(self.supply)
         n = len(self.demand)
 
         quantity = [row[:] for row in self.quantity]
 
-        # helper: list of basic cells (i,j) with quantity>0
+        # tworzy zbiór współrzędnych (i, j) - zmienne bazowe
         def basics_set(q):
             basics = set()
             for i in range(m):
@@ -27,30 +23,30 @@ class TransportOptimization:
                         basics.add((i, j))
             return basics
 
-        # ensure degeneracy: need m + n - 1 basics
+        # zapobieganie degeneracji przez dodanie zerowych przydziałów
         def ensure_degeneracy(q):
             basics = basics_set(q)
             needed = m + n - 1
             if len(basics) >= needed:
                 return q
 
-            # add zero allocations in increasing cost order
             cells = [(self.costs[i][j], i, j) for i in range(m) for j in range(n) if (i, j) not in basics]
             cells.sort()
             for _, i, j in cells:
+                # !
+                q[i][j] = 1e-10
                 basics.add((i, j))
-                # leave quantity zero
                 if len(basics) >= needed:
                     break
             return q
 
-        quantity = ensure_degeneracy(quantity)
+        # quantity = ensure_degeneracy(quantity)
 
-        # compute u and v potentials for current basis
+        # obliczanie potencjałów u i v dla zmiennych bazowych
         def compute_potentials(basics):
             u = [None] * m
             v = [None] * n
-            # set arbitrary u[0]=0
+            # Punkt startowy - ustalamy pierwszy potencjał na 0
             u[0] = 0
             changed = True
             while changed:
@@ -64,7 +60,7 @@ class TransportOptimization:
                         changed = True
             return u, v
 
-        # compute deltas for all non-basic cells
+        # obliczanie oceny komórek niebazowych (wskaźniki optymalności)
         def compute_deltas(basics, u, v):
             deltas = [[None] * n for _ in range(m)]
             for i in range(m):
@@ -72,13 +68,12 @@ class TransportOptimization:
                     if (i, j) in basics:
                         deltas[i][j] = None
                     else:
-                        # if potentials unknown, treat as 0 (should not happen after compute)
                         ui = 0 if u[i] is None else u[i]
                         vj = 0 if v[j] is None else v[j]
                         deltas[i][j] = self.costs[i][j] - (ui + vj)
             return deltas
 
-        # find entering cell: cell with most negative delta (for minimization)
+        # wybranie pola z najniższą wartością wskaźnika optymalności
         def find_entering(deltas):
             min_val = 0
             pos = None
@@ -91,24 +86,21 @@ class TransportOptimization:
                         pos = (i, j)
             return pos, min_val
 
-        # find a cycle (closed loop) including start and only using basic cells + start
+        # znajdowanie cyklu - start z pola entering i poruszanie się wzdłuż wierszy i kolumn zmiennych bazowych
         def find_cycle(start, basics):
-            # basics includes start as candidate
             basics_all = set(basics)
             basics_all.add(start)
 
-            # adjacency helpers: for a given cell, other cells in same row/col that are in basics_all
+            # dla danej komórki, inne komórki w tym samym wierszu/kolumnie
             row_map = {i: [] for i in range(m)}
             col_map = {j: [] for j in range(n)}
             for (i, j) in basics_all:
                 row_map[i].append((i, j))
                 col_map[j].append((i, j))
 
-            # backtracking: alternate row/col moves
-            path = [start]
 
             def backtrack(pos, visited, move_row):
-                # move_row==True: next move must change column (stay in same row)
+                # move_row==True - ruch w wierszu, False - w kolumnie
                 i, j = pos
                 if move_row:
                     for (_, nj) in row_map[i]:
@@ -138,7 +130,8 @@ class TransportOptimization:
                         visited.remove(nxt)
                 return False
 
-            # try starting with row move and column move
+            # próba rozpoczęcia od ruchu w wierszu lub kolumnie
+            path = [start]
             if backtrack(start, set([start]), True):
                 return path[:]
             path = [start]
@@ -146,16 +139,16 @@ class TransportOptimization:
                 return path[:]
             return None
 
-        # apply cycle: add theta to '+' positions (even indices), subtract from '-' positions (odd indices)
+        # zastosowanie cyklu do aktualizacji przydziałów
         def apply_cycle(q, cycle):
-            # identify - positions (those at odd indices)
+            # identyfikacja pozycji minusowych
             minus_positions = []
             for idx, pos in enumerate(cycle):
                 if idx % 2 == 1:
                     minus_positions.append(pos)
-            # theta is min quantity on minus positions
+            # theta = min ilości na pozycjach minusowych
             theta = min(q[i][j] for (i, j) in minus_positions)
-            # apply
+            # aktualizacja ilości wzdłuż cyklu
             for idx, (i, j) in enumerate(cycle):
                 if idx % 2 == 0:
                     q[i][j] += theta
@@ -163,11 +156,13 @@ class TransportOptimization:
                     q[i][j] -= theta
             return q
 
-        # main optimization loop
+        # !
+        # quantity = ensure_degeneracy(quantity)
+        # główna pętla optymalizacji
         it = 0
         while it < max_iter:
-            basics = basics_set(quantity)
-            # ensure degeneracy
+            # !
+            # basics = basics_set(quantity)
             quantity = ensure_degeneracy(quantity)
             basics = basics_set(quantity)
             u, v = compute_potentials(basics)
@@ -177,19 +172,22 @@ class TransportOptimization:
                 break
             cycle = find_cycle(entering, basics)
             if cycle is None:
-                # cannot find cycle -> mark this cell as non-usable (degenerate handling), skip
-                # add it to basics as zero to avoid reconsidering
-                basics.add(entering)
+                # !
+                i_ent, j_ent = entering
+                quantity[i_ent][j_ent] = 1e-10
+                # !
+                # basics.add(entering)
                 it += 1
                 continue
-            # apply cycle
+            # zastosowanie cyklu
             quantity = apply_cycle(quantity, cycle)
             it += 1
 
-        # compute total cost
         total = 0
         for i in range(m):
             for j in range(n):
+                if quantity[i][j] < 1e-9:
+                    quantity[i][j] = 0
                 total += quantity[i][j] * self.costs[i][j]
         self.quantity = quantity
         return total, quantity
@@ -214,7 +212,7 @@ if __name__ == "__main__":
 
     from solution import TransportSolution
     model = TransportSolution(costs, demand, supply)
-    results, quantity = model.vam()
+    results, quantity = model.north_west()
     print(results)
     costs = model.costs
     supply = model.supply
