@@ -1,4 +1,4 @@
-from PyQt5 import QtWidgets, QtCore
+from PyQt5 import QtWidgets, QtCore, QtGui
 import sys
 
 from solution import TransportSolution
@@ -57,6 +57,13 @@ class TransportQtApp(QtWidgets.QWidget):
         self.results_area.setWidgetResizable(True)
         self.results_area.setWidget(self.results_widget)
         main_layout.addWidget(self.results_area, 1)
+
+        # iterations area for north_west
+        self.iterations_group = QtWidgets.QGroupBox("Iteracje optymalizacji (Metoda północno-zachodniego kąta)")
+        self.iterations_layout = QtWidgets.QVBoxLayout()
+        self.iterations_group.setLayout(self.iterations_layout)
+        self.iterations_group.setVisible(False)
+        main_layout.addWidget(self.iterations_group)
 
         self.input_table = None
 
@@ -174,6 +181,15 @@ class TransportQtApp(QtWidgets.QWidget):
             if w:
                 w.deleteLater()
 
+        # Wyczyść iteracje
+        while self.iterations_layout.count():
+            item = self.iterations_layout.takeAt(0)
+            w = item.widget()
+            if w:
+                w.deleteLater()
+        self.iterations_group.setVisible(False)
+
+        nw_iterations = None
         for name, func in methods:
             try:
                 res_cost, quantity = func()
@@ -185,11 +201,20 @@ class TransportQtApp(QtWidgets.QWidget):
             if quantity is not None:
                 try:
                     optimizer = TransportOptimization(quantity=quantity, costs=model.costs, supply=model.supply, demand=model.demand)
-                    opt_cost, opt_quantity = optimizer.optimize()
+                    # Śledź iteracje tylko dla metody north_west
+                    if name == "Metoda północno-zachodniego kąta":
+                        result = optimizer.optimize(track_iterations=True)
+                        opt_cost, opt_quantity, nw_iterations = result
+                    else:
+                        opt_cost, opt_quantity = optimizer.optimize()
                 except Exception as e:
                     print(f"Optymalizacja dla {name} nie powiodła się:", e)
 
             self._add_result_block(name, res_cost, quantity, opt_cost, opt_quantity)
+        
+        # Wyświetl iteracje dla north_west
+        if nw_iterations is not None:
+            self._display_iterations(nw_iterations)
 
     def _add_result_block(self, name, cost, qty, opt_cost, opt_qty):
         group = QtWidgets.QGroupBox(name)
@@ -243,6 +268,59 @@ class TransportQtApp(QtWidgets.QWidget):
             height += table.rowHeight(row)
         # marginesy
         table.setMinimumSize(width + 8, height + 8)
+
+    def _display_iterations(self, iterations):
+        """Wyświetla historię iteracji optymalizacji."""
+        self.iterations_group.setVisible(True)
+        
+        # Utwórz pole tekstowe do wyświetlania iteracji
+        text_edit = QtWidgets.QTextEdit()
+        text_edit.setReadOnly(True)
+        text_edit.setFont(QtGui.QFont("Courier New", 9))
+        
+        # Zbuduj tekst z wszystkimi iteracjami
+        output_text = ""
+        for iter_data in iterations:
+            iter_num = iter_data['iteration']
+            cost = iter_data['cost']
+            quantity = iter_data['quantity']
+            entering = iter_data['entering']
+            
+            # Nagłówek iteracji
+            output_text += f"\n{'='*70}\n"
+            output_text += f"Iteracja {iter_num}: Koszt = {cost:.2f}"
+            if entering:
+                output_text += f", Wchodząca komórka: H{entering[0]+1}, Z{entering[1]+1}"
+            else:
+                output_text += " (Rozwiązanie optymalne osiągnięte)"
+            output_text += f"\n{'='*70}\n\n"
+            
+            # Wyświetl macierz quantity jako tekst
+            m = len(quantity)
+            n = len(quantity[0]) if m > 0 else 0
+            
+            # Nagłówki kolumn
+            header = "      "
+            for j in range(n):
+                header += f"Z{j+1:>8} "
+            output_text += header + "\n"
+            output_text += "      " + "-" * (9 * n) + "\n"
+            
+            # Wiersze z danymi
+            for i in range(m):
+                row_text = f"H{i+1:<4} |"
+                for j in range(n):
+                    val = quantity[i][j]
+                    if val == 0 or val < 1e-9:
+                        row_text += f"{'0':>8} "
+                    else:
+                        row_text += f"{val:>8.2f} "
+                output_text += row_text + "\n"
+            
+            output_text += "\n"
+        
+        text_edit.setPlainText(output_text)
+        self.iterations_layout.addWidget(text_edit)
 
 
 def main():

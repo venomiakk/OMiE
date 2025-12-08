@@ -7,12 +7,13 @@ class TransportOptimization:
         self.supply = supply
         self.demand = demand
 
-    def optimize(self, max_iter=1000):
+    def optimize(self, max_iter=1000, track_iterations=False):
 
         m = len(self.supply)
         n = len(self.demand)
 
         quantity = [row[:] for row in self.quantity]
+        iterations_history = []
 
         # tworzy zbiór współrzędnych (i, j) - zmienne bazowe
         def basics_set(q):
@@ -168,6 +169,18 @@ class TransportOptimization:
             u, v = compute_potentials(basics)
             deltas = compute_deltas(basics, u, v)
             entering, val = find_entering(deltas)
+            
+            if track_iterations:
+                # Oblicz koszt dla bieżącej iteracji
+                iter_cost = sum(quantity[i][j] * self.costs[i][j] for i in range(m) for j in range(n))
+                iterations_history.append({
+                    'iteration': it,
+                    'quantity': [row[:] for row in quantity],
+                    'cost': iter_cost,
+                    'entering': entering,
+                    'deltas': deltas
+                })
+            
             if entering is None:
                 break
             cycle = find_cycle(entering, basics)
@@ -190,6 +203,9 @@ class TransportOptimization:
                     quantity[i][j] = 0
                 total += quantity[i][j] * self.costs[i][j]
         self.quantity = quantity
+        
+        if track_iterations:
+            return total, quantity, iterations_history
         return total, quantity
 
 
