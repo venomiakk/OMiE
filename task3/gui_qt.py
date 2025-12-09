@@ -300,21 +300,21 @@ class TransportQtApp(QtWidgets.QWidget):
             n = len(quantity[0]) if m > 0 else 0
             
             # Nagłówki kolumn
-            header = "      "
+            header = "     "
             for j in range(n):
-                header += f"Z{j+1:>8} "
+                header += f"{f'Z{j+1}':>9}"
             output_text += header + "\n"
-            output_text += "      " + "-" * (9 * n) + "\n"
+            output_text += "     " + "-" * (9 * n) + "\n"
             
             # Wiersze z danymi
             for i in range(m):
-                row_text = f"H{i+1:<4} |"
+                row_text = f"{f'H{i+1}':<4}|"
                 for j in range(n):
                     val = quantity[i][j]
                     if val == 0 or val < 1e-9:
-                        row_text += f"{'0':>8} "
+                        row_text += f"{'0':>9}"
                     else:
-                        row_text += f"{val:>8.2f} "
+                        row_text += f"{val:>9.2f}"
                 output_text += row_text + "\n"
             
             output_text += "\n"
